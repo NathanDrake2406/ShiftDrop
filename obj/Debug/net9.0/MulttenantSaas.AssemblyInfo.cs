@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MulttenantSaas")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+361aed099cc4bf499cd42dd000feb1dce72c30ac")]
 [assembly: System.Reflection.AssemblyProductAttribute("MulttenantSaas")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MulttenantSaas")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
