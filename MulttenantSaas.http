@@ -1,0 +1,6 @@
+@MulttenantSaas_HostAddress = http://localhost:5228
+
+GET {{MulttenantSaas_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

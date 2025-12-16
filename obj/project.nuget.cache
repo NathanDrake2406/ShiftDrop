@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "sAk6WvFOyGs=",
+  "success": true,
+  "projectFilePath": "/Users/nathan/Projects/MulttenantSaas/MulttenantSaas.csproj",
+  "expectedPackageFiles": [
+    "/Users/nathan/.nuget/packages/microsoft.aspnetcore.openapi/9.0.8/microsoft.aspnetcore.openapi.9.0.8.nupkg.sha512",
+    "/Users/nathan/.nuget/packages/microsoft.openapi/1.6.17/microsoft.openapi.1.6.17.nupkg.sha512"
+  ],
+  "logs": []
+}
