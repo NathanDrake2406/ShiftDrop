@@ -1,6 +1,81 @@
-@MulttenantSaas_HostAddress = http://localhost:5228
+@host = https://localhost:5001
+@token = YOUR_AUTH0_TOKEN_HERE
 
-GET {{MulttenantSaas_HostAddress}}/weatherforecast/
-Accept: application/json
+### Health check
+GET {{host}}/health
 
-###
+### ========== MANAGER ENDPOINTS ==========
+
+### Create a pool
+POST {{host}}/pools
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Cafe Team"
+}
+
+### List my pools
+GET {{host}}/pools
+Authorization: Bearer {{token}}
+
+### Get pool details
+GET {{host}}/pools/{{poolId}}
+Authorization: Bearer {{token}}
+
+### Add casual to pool
+POST {{host}}/pools/{{poolId}}/casuals
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Jane Smith",
+  "phoneNumber": "+61412345678"
+}
+
+### Post a shift (triggers SMS broadcast)
+POST {{host}}/pools/{{poolId}}/shifts
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "startsAt": "2026-01-21T09:00:00Z",
+  "endsAt": "2026-01-21T14:00:00Z",
+  "spotsNeeded": 2
+}
+
+### View shifts with claims
+GET {{host}}/pools/{{poolId}}/shifts
+Authorization: Bearer {{token}}
+
+### Release a casual from shift
+POST {{host}}/pools/{{poolId}}/shifts/{{shiftId}}/release/{{casualId}}
+Authorization: Bearer {{token}}
+
+### Cancel a shift
+POST {{host}}/pools/{{poolId}}/shifts/{{shiftId}}/cancel
+Authorization: Bearer {{token}}
+
+### ========== CASUAL ENDPOINTS ==========
+
+### View available shifts
+GET {{host}}/casual/shifts?phoneNumber=%2B61412345678
+
+### Claim a shift
+POST {{host}}/casual/shifts/{{shiftId}}/claim
+Content-Type: application/json
+
+{
+  "phoneNumber": "+61412345678"
+}
+
+### Release yourself from shift ("Can't make it")
+POST {{host}}/casual/shifts/{{shiftId}}/release
+Content-Type: application/json
+
+{
+  "phoneNumber": "+61412345678"
+}
+
+### View my claimed shifts
+GET {{host}}/casual/my-shifts?phoneNumber=%2B61412345678

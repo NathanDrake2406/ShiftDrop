@@ -1,0 +1,8 @@
+.DS_Store
+**/bin/
+**/obj/
+**/TestResults/
+.serena/
+*.md
+shiftdrop_code.zip
+appsettings.Development.json
