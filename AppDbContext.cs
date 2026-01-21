@@ -16,15 +16,19 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Pool>(entity =>
         {
             entity.HasKey(p => p.Id);
+            entity.Property(p => p.Id).ValueGeneratedNever(); // Domain generates IDs
             entity.Property(p => p.Name).HasMaxLength(200).IsRequired();
             entity.Property(p => p.ManagerAuth0Id).HasMaxLength(200).IsRequired();
             entity.HasIndex(p => p.ManagerAuth0Id);
             
+            // Use backing field for proper change tracking with IReadOnlyCollection
+            entity.Navigation(p => p.Casuals).UsePropertyAccessMode(PropertyAccessMode.Field);
             entity.HasMany(p => p.Casuals)
                 .WithOne(c => c.Pool)
                 .HasForeignKey(c => c.PoolId)
                 .OnDelete(DeleteBehavior.Cascade);
-                
+
+            entity.Navigation(p => p.Shifts).UsePropertyAccessMode(PropertyAccessMode.Field);
             entity.HasMany(p => p.Shifts)
                 .WithOne(s => s.Pool)
                 .HasForeignKey(s => s.PoolId)
@@ -34,10 +38,13 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Casual>(entity =>
         {
             entity.HasKey(c => c.Id);
+            entity.Property(c => c.Id).ValueGeneratedNever(); // Domain generates IDs
             entity.Property(c => c.Name).HasMaxLength(200).IsRequired();
             entity.Property(c => c.PhoneNumber).HasMaxLength(50).IsRequired();
             entity.HasIndex(c => new { c.PoolId, c.PhoneNumber }).IsUnique();
             
+            // Use backing field for proper change tracking with IReadOnlyCollection
+            entity.Navigation(c => c.Claims).UsePropertyAccessMode(PropertyAccessMode.Field);
             entity.HasMany(c => c.Claims)
                 .WithOne(sc => sc.Casual)
                 .HasForeignKey(sc => sc.CasualId)
@@ -47,6 +54,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Shift>(entity =>
         {
             entity.HasKey(s => s.Id);
+            entity.Property(s => s.Id).ValueGeneratedNever(); // Domain generates IDs
             entity.Property(s => s.Status).HasConversion<string>().HasMaxLength(20);
             
             // Concurrency token to handle race conditions on claim
@@ -54,6 +62,8 @@ public class AppDbContext : DbContext
             
             entity.HasIndex(s => new { s.PoolId, s.Status, s.StartsAt });
             
+            // Use backing field for proper change tracking with IReadOnlyCollection
+            entity.Navigation(s => s.Claims).UsePropertyAccessMode(PropertyAccessMode.Field);
             entity.HasMany(s => s.Claims)
                 .WithOne(sc => sc.Shift)
                 .HasForeignKey(sc => sc.ShiftId)
@@ -63,6 +73,8 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<ShiftClaim>(entity =>
         {
             entity.HasKey(sc => sc.Id);
+            // Domain generates IDs, not the database - critical for proper INSERT vs UPDATE
+            entity.Property(sc => sc.Id).ValueGeneratedNever();
             entity.Property(sc => sc.Status).HasConversion<string>().HasMaxLength(20);
             entity.HasIndex(sc => new { sc.ShiftId, sc.CasualId, sc.Status });
         });

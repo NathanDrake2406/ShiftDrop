@@ -49,3 +49,6 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 app.MapFeatures();
 
 app.Run();
+
+// Make Program accessible for WebApplicationFactory in tests
+public partial class Program { }
