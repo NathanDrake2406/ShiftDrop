@@ -9,6 +9,52 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+@layer components {
+  .ui-surface {
+    @apply bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700;
+  }
+
+  .ui-surface-muted {
+    @apply bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700;
+  }
+
+  .ui-input {
+    @apply w-full border dark:border-slate-600 rounded-lg p-3 bg-slate-50 dark:bg-slate-700 dark:text-white;
+  }
+
+  .ui-input-error {
+    @apply border-red-300 dark:border-red-500;
+  }
+
+  .ui-modal-backdrop {
+    @apply fixed inset-0 bg-black/50 z-50 flex justify-center backdrop-blur-sm p-4;
+  }
+
+  .ui-modal-panel {
+    @apply bg-white dark:bg-slate-800 w-full rounded-2xl p-6 shadow-2xl;
+  }
+
+  .ui-modal-header {
+    @apply flex justify-between items-center mb-4;
+  }
+
+  .ui-modal-title {
+    @apply text-xl font-bold dark:text-white;
+  }
+
+  .ui-icon-button {
+    @apply p-2 bg-slate-100 dark:bg-slate-700 rounded-full dark:text-slate-300;
+  }
+
+  .ui-divider {
+    @apply border-t border-slate-100 dark:border-slate-700;
+  }
+
+  .ui-section-label {
+    @apply text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 px-1;
+  }
+}
+
 /* Hide scrollbar for Chrome, Safari and Opera */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

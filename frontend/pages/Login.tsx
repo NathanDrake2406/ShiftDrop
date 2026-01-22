@@ -37,7 +37,7 @@ export const Login: React.FC<LoginProps> = ({ onCasualLogin }) => {
             <p className="text-slate-500 dark:text-slate-400">Fast shift filling for busy teams.</p>
         </div>
 
-        <div className="w-full bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 space-y-6">
+        <div className="ui-surface p-6 rounded-2xl shadow-lg space-y-6">
             
             {/* Casual Login Flow */}
             <div>
@@ -46,7 +46,7 @@ export const Login: React.FC<LoginProps> = ({ onCasualLogin }) => {
                     <input 
                         type="tel" 
                         placeholder="Phone Number (e.g. 555-0101)"
-                        className="w-full border dark:border-slate-600 rounded-xl p-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:bg-white dark:focus:bg-slate-600 transition-colors"
+                        className="ui-input rounded-xl focus:bg-white dark:focus:bg-slate-600 transition-colors"
                         value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value)}
                     />
@@ -59,7 +59,7 @@ export const Login: React.FC<LoginProps> = ({ onCasualLogin }) => {
                 </p>
             </div>
 
-            <div className="border-t border-slate-100 dark:border-slate-700"></div>
+            <div className="ui-divider"></div>
 
             {/* Manager Entry */}
             <div>

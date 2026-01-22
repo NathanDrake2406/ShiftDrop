@@ -2,6 +2,7 @@ import React from "react";
 import { Shift, ShiftStatus, ClaimStatus } from "../types";
 import { Button } from "./ui/Button";
 import { Clock, Users, Calendar, X } from "lucide-react";
+import { formatDateDMY } from "../utils/date";
 
 interface ShiftCardProps {
   shift: Shift;
@@ -34,12 +35,12 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({
 
   return (
     <div
-      className={`bg-white dark:bg-slate-800 rounded-2xl p-5 border shadow-sm transition-all dark:border-slate-700 ${isCancelled ? "opacity-60" : "border-slate-100"}`}
+      className={`ui-surface rounded-2xl p-5 shadow-sm transition-all ${isCancelled ? "opacity-60" : ""}`}
     >
       <div className="flex justify-between items-start mb-3">
         <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm font-medium">
           <Calendar className="w-4 h-4" />
-          <span>{start.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</span>
+          <span>{formatDateDMY(start)}</span>
         </div>
         <div
           className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide
@@ -113,7 +114,7 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({
 
       {/* Manager View Claims */}
       {userType === "manager" && shift.claims.length > 0 && (
-        <div className="mt-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3">
+        <div className="mt-3 ui-surface-muted rounded-lg p-3">
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase">Who's working</p>
           <div className="space-y-2">
             {shift.claims

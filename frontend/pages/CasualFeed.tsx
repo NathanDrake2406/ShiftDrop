@@ -4,6 +4,7 @@ import { Shift, Casual, ClaimStatus } from "../types";
 import { Layout } from "../components/ui/Layout";
 import { Button } from "../components/ui/Button";
 import { ShiftCard } from "../components/ShiftCard";
+import { formatDateDMY } from "../utils/date";
 
 interface CasualFeedProps {
   currentUser: Casual;
@@ -17,6 +18,8 @@ export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout })
 
   // Confirmation Modal State
   const [confirmingShift, setConfirmingShift] = useState<Shift | null>(null);
+  const [confirmingBailShift, setConfirmingBailShift] = useState<Shift | null>(null);
+  const [isBailing, setIsBailing] = useState(false);
 
   const loadShifts = async () => {
     try {
@@ -55,15 +58,25 @@ export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout })
     }
   };
 
-  const handleBail = async (shiftId: string) => {
-    if (!window.confirm("Are you sure you want to back out of this shift?")) return;
+  const handleBail = (shiftId: string) => {
+    const shift = shifts.find((s) => s.id === shiftId);
+    if (shift) {
+      setConfirmingBailShift(shift);
+    }
+  };
+
+  const confirmBail = async () => {
+    if (!confirmingBailShift) return;
     setLoading(true);
+    setIsBailing(true);
     try {
-      await api.casual.bailShift(shiftId, currentUser);
+      await api.casual.bailShift(confirmingBailShift.id, currentUser);
       await loadShifts();
     } catch (e: any) {
       alert("Could not bail: " + e.message);
     } finally {
+      setIsBailing(false);
+      setConfirmingBailShift(null);
       setLoading(false);
     }
   };
@@ -93,7 +106,7 @@ export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout })
           {/* Section: My Upcoming Shifts */}
           {myClaims.length > 0 && (
             <div className="mb-6">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 px-1">
+              <h2 className="ui-section-label">
                 My Shifts
               </h2>
               <div className="space-y-4">
@@ -112,11 +125,11 @@ export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout })
 
           {/* Section: Available */}
           <div>
-            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 px-1">
+            <h2 className="ui-section-label">
               Available Now
             </h2>
             {availableShifts.length === 0 ? (
-              <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-8 text-center text-slate-500 dark:text-slate-400">
+              <div className="rounded-xl p-8 text-center text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800">
                 No new shifts available right now.
               </div>
             ) : (
@@ -138,12 +151,12 @@ export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout })
 
       {/* Confirmation Modal */}
       {confirmingShift && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-800 w-full max-w-xs rounded-2xl p-6 shadow-2xl scale-100">
+        <div className="ui-modal-backdrop items-center animate-in fade-in duration-200">
+          <div className="ui-modal-panel max-w-xs scale-100">
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Confirm Shift</h3>
             <p className="text-slate-600 dark:text-slate-300 text-sm mb-6">
               Are you sure you want to take this shift on{" "}
-              <span className="font-semibold">{new Date(confirmingShift.startsAt).toLocaleDateString()}</span>?
+              <span className="font-semibold">{formatDateDMY(new Date(confirmingShift.startsAt))}</span>?
             </p>
             <div className="flex gap-3">
               <Button variant="secondary" className="flex-1" onClick={() => setConfirmingShift(null)}>
@@ -151,6 +164,26 @@ export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout })
               </Button>
               <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700" onClick={confirmClaim}>
                 Yes, Claim
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmingBailShift && (
+        <div className="ui-modal-backdrop items-center animate-in fade-in duration-200">
+          <div className="ui-modal-panel max-w-xs scale-100">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Bail on Shift</h3>
+            <p className="text-slate-600 dark:text-slate-300 text-sm mb-6">
+              Are you sure you want to bail on the shift on{" "}
+              <span className="font-semibold">{formatDateDMY(new Date(confirmingBailShift.startsAt))}</span>?
+            </p>
+            <div className="flex gap-3">
+              <Button variant="secondary" className="flex-1" onClick={() => setConfirmingBailShift(null)}>
+                Keep Shift
+              </Button>
+              <Button className="flex-1 bg-red-600 hover:bg-red-700" onClick={confirmBail} isLoading={isBailing}>
+                Bail
               </Button>
             </div>
           </div>
