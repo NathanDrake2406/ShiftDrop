@@ -26,8 +26,16 @@ body {
     @apply border-red-300 dark:border-red-500;
   }
 
+  .ui-input-shell {
+    @apply w-full h-11 border dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 px-3 flex items-center;
+  }
+
+  .ui-input-field {
+    @apply w-full h-full bg-transparent text-slate-900 dark:text-white outline-none text-base;
+  }
+
   .ui-modal-backdrop {
-    @apply fixed inset-0 bg-black/50 z-50 flex justify-center backdrop-blur-sm p-4;
+    @apply fixed inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur-sm p-4;
   }
 
   .ui-modal-panel {

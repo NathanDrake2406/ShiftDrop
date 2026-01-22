@@ -74,7 +74,7 @@ export const ManagerDashboard: React.FC = () => {
             className="ui-surface p-5 rounded-2xl shadow-sm active:scale-95 transition-transform cursor-pointer flex justify-between items-center group"
           >
             <div>
-              <h3 className="font-bold text-lg text-slate-900 group-hover:text-blue-600 transition-colors">{pool.name}</h3>
+              <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{pool.name}</h3>
               <div className="flex items-center gap-1.5 text-slate-500 text-sm mt-1">
                 <Users className="w-4 h-4" />
                 <span>{pool.casuals.length} casuals</span>
@@ -101,7 +101,7 @@ export const ManagerDashboard: React.FC = () => {
       </div>
 
       {isCreatingPool && (
-        <div className="ui-modal-backdrop items-end sm:items-center">
+        <div className="ui-modal-backdrop">
           <div className="ui-modal-panel max-w-md animate-in slide-in-from-bottom-10 fade-in duration-200">
              <div className="ui-modal-header">
                  <h2 className="ui-modal-title">Create Pool</h2>

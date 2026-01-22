@@ -350,7 +350,7 @@ export const PoolDetails: React.FC = () => {
 
       {/* Create Shift Modal/Drawer */}
       {isCreating && (
-        <div className="ui-modal-backdrop items-end sm:items-center">
+        <div className="ui-modal-backdrop">
           <div className="ui-modal-panel max-w-md animate-in slide-in-from-bottom-10 fade-in duration-200">
              <div className="ui-modal-header">
                  <h2 className="ui-modal-title">New Shift</h2>
@@ -363,22 +363,26 @@ export const PoolDetails: React.FC = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                           <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Date</label>
-                          <input 
-                              type="date" 
-                              className="ui-input"
-                              value={shiftForm.startDate}
-                              onChange={(e) => setShiftForm({...shiftForm, startDate: e.target.value})}
-                          />
+                          <div className="ui-input-shell">
+                            <input 
+                                type="date" 
+                                className="ui-input-field"
+                                value={shiftForm.startDate}
+                                onChange={(e) => setShiftForm({...shiftForm, startDate: e.target.value})}
+                            />
+                          </div>
                       </div>
                       <div>
                           <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Time</label>
-                          <input 
-                              type="time" 
-                              step="60"
-                              className="ui-input"
-                              value={shiftForm.startTime}
-                              onChange={(e) => setShiftForm({...shiftForm, startTime: e.target.value})}
-                          />
+                          <div className="ui-input-shell">
+                            <input 
+                                type="time" 
+                                step="60"
+                                className="ui-input-field"
+                                value={shiftForm.startTime}
+                                onChange={(e) => setShiftForm({...shiftForm, startTime: e.target.value})}
+                            />
+                          </div>
                       </div>
                     </div>
                 </div>
@@ -387,39 +391,45 @@ export const PoolDetails: React.FC = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                           <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Date</label>
-                          <input 
-                              type="date" 
-                              className="ui-input"
-                              value={shiftForm.endDate}
-                              onChange={(e) => setShiftForm({...shiftForm, endDate: e.target.value})}
-                          />
+                          <div className="ui-input-shell">
+                            <input 
+                                type="date" 
+                                className="ui-input-field"
+                                value={shiftForm.endDate}
+                                onChange={(e) => setShiftForm({...shiftForm, endDate: e.target.value})}
+                            />
+                          </div>
                       </div>
                       <div>
                           <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Time</label>
-                          <input 
-                              type="time" 
-                              step="60"
-                              className="ui-input"
-                              value={shiftForm.endTime}
-                              onChange={(e) => setShiftForm({...shiftForm, endTime: e.target.value})}
-                          />
+                          <div className="ui-input-shell">
+                            <input 
+                                type="time" 
+                                step="60"
+                                className="ui-input-field"
+                                value={shiftForm.endTime}
+                                onChange={(e) => setShiftForm({...shiftForm, endTime: e.target.value})}
+                            />
+                          </div>
                       </div>
                     </div>
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Spots Needed</label>
-                    <input 
-                        type="number" 
-                        min="1"
-                        step="1"
-                        className="ui-input"
-                        value={Number.isFinite(shiftForm.spotsNeeded) ? shiftForm.spotsNeeded : ''}
-                        onChange={(e) => {
-                          const rawValue = e.target.value;
-                          const parsed = rawValue === '' ? Number.NaN : Number(rawValue);
-                          setShiftForm({ ...shiftForm, spotsNeeded: parsed });
-                        }}
-                    />
+                    <div className="ui-input-shell">
+                      <input 
+                          type="number" 
+                          min="1"
+                          step="1"
+                          className="ui-input-field"
+                          value={Number.isFinite(shiftForm.spotsNeeded) ? shiftForm.spotsNeeded : ''}
+                          onChange={(e) => {
+                            const rawValue = e.target.value;
+                            const parsed = rawValue === '' ? Number.NaN : Number(rawValue);
+                            setShiftForm({ ...shiftForm, spotsNeeded: parsed });
+                          }}
+                      />
+                    </div>
                 </div>
                 <Button className="w-full mt-2" onClick={handlePostShift}>
                     Post Shift
@@ -431,7 +441,7 @@ export const PoolDetails: React.FC = () => {
 
       {/* Add Casual Modal/Drawer */}
       {isAddingCasual && (
-        <div className="ui-modal-backdrop items-end sm:items-center">
+        <div className="ui-modal-backdrop">
           <div className="ui-modal-panel max-w-md animate-in slide-in-from-bottom-10 fade-in duration-200">
              <div className="ui-modal-header">
                  <h2 className="ui-modal-title">Add Casual</h2>
@@ -493,7 +503,7 @@ export const PoolDetails: React.FC = () => {
       )}
 
       {confirmAction && confirmActionCopy && (
-        <div className="ui-modal-backdrop items-end sm:items-center">
+        <div className="ui-modal-backdrop">
           <div className="ui-modal-panel max-w-md animate-in slide-in-from-bottom-10 fade-in duration-200">
             <div className="ui-modal-header">
               <h2 className="ui-modal-title">{confirmActionCopy.title}</h2>
