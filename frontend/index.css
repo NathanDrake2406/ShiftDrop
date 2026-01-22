@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+/* Enable class-based dark mode (instead of prefers-color-scheme) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Custom styles */
+body {
+  font-family: "Inter", sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
