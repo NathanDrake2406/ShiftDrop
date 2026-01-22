@@ -122,8 +122,11 @@ export const api = {
         throw new Error('Shift duration too long');
       }
 
-      const spotsNeeded = shiftData.spotsNeeded ?? 0;
-      if (spotsNeeded <= 0) {
+      const spotsNeeded = shiftData.spotsNeeded;
+      if (typeof spotsNeeded !== 'number') {
+        throw new Error('Spots needed must be at least 1');
+      }
+      if (!Number.isFinite(spotsNeeded) || !Number.isInteger(spotsNeeded) || spotsNeeded <= 0) {
         throw new Error('Spots needed must be at least 1');
       }
 
@@ -183,12 +186,12 @@ export const api = {
         await delay(400);
         const shifts: Shift[] = [];
         for (const pool of pools) {
-            const isMember = pool.casuals.some(c => c.phoneNumber === phoneNumber);
-            if (isMember) {
+            const casual = pool.casuals.find(c => c.phoneNumber === phoneNumber);
+            if (casual) {
                 // Return open shifts and shifts the user has claimed
                 const visibleShifts = pool.shifts.filter(s => 
                     (s.status === ShiftStatus.Open && s.spotsRemaining > 0) ||
-                    s.claims.some(c => c.casualId && c.status === ClaimStatus.Claimed)
+                    s.claims.some(c => c.casualId === casual.id && c.status === ClaimStatus.Claimed)
                 );
                 shifts.push(...visibleShifts);
             }

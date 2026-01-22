@@ -53,11 +53,3 @@ export interface Pool {
   casuals: Casual[];
   shifts: Shift[];
 }
-
-// AI Service Types
-export interface AIShiftSuggestion {
-  startsAt: string;
-  endsAt: string;
-  spotsNeeded: number;
-  reasoning: string;
-}

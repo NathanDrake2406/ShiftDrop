@@ -151,7 +151,7 @@ export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout })
 
       {/* Confirmation Modal */}
       {confirmingShift && (
-        <div className="ui-modal-backdrop items-center animate-in fade-in duration-200">
+        <div className="ui-modal-backdrop animate-in fade-in duration-200">
           <div className="ui-modal-panel max-w-xs scale-100">
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Confirm Shift</h3>
             <p className="text-slate-600 dark:text-slate-300 text-sm mb-6">
@@ -171,7 +171,7 @@ export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout })
       )}
 
       {confirmingBailShift && (
-        <div className="ui-modal-backdrop items-center animate-in fade-in duration-200">
+        <div className="ui-modal-backdrop animate-in fade-in duration-200">
           <div className="ui-modal-panel max-w-xs scale-100">
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Bail on Shift</h3>
             <p className="text-slate-600 dark:text-slate-300 text-sm mb-6">
