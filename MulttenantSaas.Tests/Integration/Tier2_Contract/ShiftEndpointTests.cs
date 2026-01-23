@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 using ShiftDrop.Domain;
 
@@ -18,10 +19,10 @@ public class ShiftEndpointTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task PostShift_WithValidRequest_Returns201AndBroadcastsSms()
+    public async Task PostShift_WithActiveCasuals_CreatesOutboxMessagesForNotifications()
     {
-        // Arrange
-        var scenario = await SeedScenarioAsync(ManagerId, casualCount: 2);
+        // Arrange - activate casuals so they receive notifications
+        var scenario = await SeedScenarioAsync(ManagerId, casualCount: 2, activateCasuals: true);
         var client = CreateAuthenticatedClient(ManagerId);
 
         var request = new PostShiftRequest(
@@ -40,10 +41,39 @@ public class ShiftEndpointTests : IntegrationTestBase
         content!.SpotsNeeded.Should().Be(2);
         content.Status.Should().Be("Open");
 
-        // Verify SMS was broadcast to all casuals
-        await SmsServiceMock.Received(1).BroadcastShiftAvailable(
-            Arg.Is<Shift>(s => s.SpotsNeeded == 2),
-            Arg.Is<IEnumerable<Casual>>(c => c.Count() == 2));
+        // Verify outbox messages were created for each active casual
+        var outboxCount = await QueryDbAsync(async db =>
+            await db.OutboxMessages.CountAsync(m => m.MessageType == nameof(ShiftBroadcastPayload)));
+        outboxCount.Should().Be(2, "one outbox message per active casual");
+
+        // Verify ShiftNotifications were created
+        var notificationCount = await QueryDbAsync(async db =>
+            await db.ShiftNotifications.CountAsync());
+        notificationCount.Should().Be(2, "one notification per active casual");
+    }
+
+    [Fact]
+    public async Task PostShift_WithPendingCasuals_DoesNotCreateOutboxMessages()
+    {
+        // Arrange - casuals are NOT activated (still pending invite)
+        var scenario = await SeedScenarioAsync(ManagerId, casualCount: 2, activateCasuals: false);
+        var client = CreateAuthenticatedClient(ManagerId);
+
+        var request = new PostShiftRequest(
+            StartsAt: TimeProvider.GetUtcNow().UtcDateTime.AddDays(1),
+            EndsAt: TimeProvider.GetUtcNow().UtcDateTime.AddDays(1).AddHours(4),
+            SpotsNeeded: 2);
+
+        // Act
+        var response = await client.PostAsJsonAsync($"/pools/{scenario.Pool.Id}/shifts", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        // No outbox messages for pending casuals
+        var outboxCount = await QueryDbAsync(async db =>
+            await db.OutboxMessages.CountAsync(m => m.MessageType == nameof(ShiftBroadcastPayload)));
+        outboxCount.Should().Be(0, "pending casuals should not receive notifications");
     }
 
     [Fact]
@@ -110,15 +140,23 @@ public class ShiftEndpointTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task CancelShift_WhenOpen_TransitionsStatus()
+    public async Task CancelShift_WhenOpen_TransitionsStatusAndRevokesTokens()
     {
-        // Arrange
-        var scenario = await SeedScenarioAsync(ManagerId, casualCount: 1, shiftCount: 1);
+        // Arrange - create shift with notifications
+        var scenario = await SeedScenarioAsync(ManagerId, casualCount: 2, activateCasuals: true);
         var client = CreateAuthenticatedClient(ManagerId);
 
-        // Act
+        // First create a shift (which creates notifications)
+        var shiftRequest = new PostShiftRequest(
+            StartsAt: TimeProvider.GetUtcNow().UtcDateTime.AddDays(1),
+            EndsAt: TimeProvider.GetUtcNow().UtcDateTime.AddDays(1).AddHours(4),
+            SpotsNeeded: 1);
+        var createResponse = await client.PostAsJsonAsync($"/pools/{scenario.Pool.Id}/shifts", shiftRequest);
+        var createdShift = await createResponse.Content.ReadFromJsonAsync<ShiftResponse>();
+
+        // Act - cancel the shift
         var response = await client.PostAsync(
-            $"/pools/{scenario.Pool.Id}/shifts/{scenario.FirstShift.Id}/cancel",
+            $"/pools/{scenario.Pool.Id}/shifts/{createdShift!.Id}/cancel",
             null);
 
         // Assert
@@ -127,10 +165,16 @@ public class ShiftEndpointTests : IntegrationTestBase
         // Verify the status changed in DB
         var status = await QueryDbAsync(async db =>
         {
-            var shift = await db.Shifts.FindAsync(scenario.FirstShift.Id);
+            var shift = await db.Shifts.FindAsync(createdShift.Id);
             return shift!.Status;
         });
         status.Should().Be(ShiftStatus.Cancelled);
+
+        // Verify all notifications were revoked
+        var pendingCount = await QueryDbAsync(async db =>
+            await db.ShiftNotifications.CountAsync(sn =>
+                sn.ShiftId == createdShift.Id && sn.TokenStatus == TokenStatus.Pending));
+        pendingCount.Should().Be(0, "all tokens should be revoked when shift is cancelled");
     }
 
     [Fact]

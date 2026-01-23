@@ -16,6 +16,7 @@ public static class FeaturesExtensions
 
         // Casual endpoints (anonymous)
         var casualGroup = app.MapGroup("/casual").AllowAnonymous();
-        casualGroup.MapCasualShiftFeatures();
+        casualGroup.MapAnonymousCasualFeatures(); // verify, opt-out
+        casualGroup.MapCasualShiftFeatures();     // shifts, claim-by-token
     }
 }

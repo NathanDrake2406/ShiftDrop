@@ -1,4 +1,5 @@
 using ShiftDrop.Features.Shifts.CancelShift;
+using ShiftDrop.Features.Shifts.ClaimByToken;
 using ShiftDrop.Features.Shifts.ClaimShift;
 using ShiftDrop.Features.Shifts.GetAvailableShifts;
 using ShiftDrop.Features.Shifts.GetMyShifts;
@@ -23,6 +24,7 @@ public static class ShiftsExtensions
     {
         group.MapGetAvailableShifts();
         group.MapClaimShift();
+        group.MapClaimByToken(); // SMS link one-click claim
         group.MapReleaseShift();
         group.MapGetMyShifts();
     }

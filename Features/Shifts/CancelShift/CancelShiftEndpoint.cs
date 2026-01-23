@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using ShiftDrop.Common.Responses;
+using ShiftDrop.Domain;
 
 namespace ShiftDrop.Features.Shifts.CancelShift;
 
@@ -29,6 +30,17 @@ public static class CancelShiftEndpoint
             return Results.NotFound();
 
         shift.Cancel();
+
+        // Revoke all pending claim tokens for this shift
+        var pendingNotifications = await db.ShiftNotifications
+            .Where(sn => sn.ShiftId == shiftId && sn.TokenStatus == TokenStatus.Pending)
+            .ToListAsync(ct);
+
+        foreach (var notification in pendingNotifications)
+        {
+            notification.Revoke();
+        }
+
         await db.SaveChangesAsync(ct);
 
         return Results.Ok(new ShiftResponse(shift));

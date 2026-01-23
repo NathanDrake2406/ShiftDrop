@@ -15,6 +15,16 @@ public class Casual
     public DateTime? InviteExpiresAt { get; private set; }
     public InviteStatus InviteStatus { get; private set; }
 
+    // Opt-out fields
+    public DateTime? OptedOutAt { get; private set; }
+    public string? OptOutToken { get; private set; }
+
+    /// <summary>
+    /// A casual is active if they've accepted their invite and haven't opted out.
+    /// Only active casuals receive shift notifications.
+    /// </summary>
+    public bool IsActive => InviteStatus == InviteStatus.Accepted && OptedOutAt == null;
+
     private readonly List<ShiftClaim> _claims = new();
     public IReadOnlyCollection<ShiftClaim> Claims => _claims.AsReadOnly();
 
@@ -41,18 +51,41 @@ public class Casual
             Pool = pool,
             PoolId = pool.Id,
             CreatedAt = timeProvider.GetUtcNow().UtcDateTime,
-            // Generate invite token and set expiry (7 days)
+            // Generate invite token and set expiry (1 day)
             InviteToken = Guid.NewGuid().ToString("N"),
-            InviteExpiresAt = timeProvider.GetUtcNow().UtcDateTime.AddDays(7),
+            InviteExpiresAt = timeProvider.GetUtcNow().UtcDateTime.AddDays(1),
             InviteStatus = InviteStatus.Pending,
+            // Generate opt-out token for SMS unsubscribe links
+            OptOutToken = Guid.NewGuid().ToString("N"),
         };
 
         return Result<Casual>.Success(casual);
     }
 
     /// <summary>
-    /// Called when a casual clicks their invite link and logs in via Auth0.
-    /// Links their Auth0 account to this casual record.
+    /// Called when a casual clicks their invite link to verify their phone number.
+    /// This is phone-only verification - no Auth0 required.
+    /// </summary>
+    public Result<Casual> AcceptInvite(string inviteToken, TimeProvider timeProvider)
+    {
+        if (InviteStatus == InviteStatus.Accepted)
+            return Result<Casual>.Failure("Invite has already been accepted");
+
+        if (InviteToken != inviteToken)
+            return Result<Casual>.Failure("Invalid invite token");
+
+        if (InviteExpiresAt.HasValue && timeProvider.GetUtcNow().UtcDateTime > InviteExpiresAt.Value)
+            return Result<Casual>.Failure("Invite has expired");
+
+        InviteStatus = InviteStatus.Accepted;
+        InviteToken = null; // Clear token after use
+        InviteExpiresAt = null;
+
+        return Result<Casual>.Success(this);
+    }
+
+    /// <summary>
+    /// Legacy overload for Auth0-based acceptance. Links Auth0 account to casual.
     /// </summary>
     public Result<Casual> AcceptInvite(
         string inviteToken,
@@ -60,22 +93,44 @@ public class Casual
         TimeProvider timeProvider
     )
     {
-        // TODO(human): Implement the invite acceptance logic
-        //
-        // You need to check 3 things before accepting:
-        // 1. Is the invite token correct? (compare with this.InviteToken)
-        // 2. Has the invite expired? (compare InviteExpiresAt with current time)
-        // 3. Was this invite already accepted? (check InviteStatus)
-        //
-        // If all checks pass:
-        // - Set Auth0Id to the provided auth0Id
-        // - Set InviteStatus to Accepted
-        // - Clear the InviteToken (set to null)
-        // - Return Result<Casual>.Success(this)
-        //
-        // If any check fails, return Result<Casual>.Failure("appropriate message")
+        var result = AcceptInvite(inviteToken, timeProvider);
+        if (result.IsFailure)
+            return result;
 
-        throw new NotImplementedException("Your turn! Check the TODO above.");
+        Auth0Id = auth0Id;
+        return Result<Casual>.Success(this);
+    }
+
+    /// <summary>
+    /// Regenerates the invite token for resending invites.
+    /// Only valid for casuals who haven't yet accepted.
+    /// </summary>
+    public Result<Casual> RegenerateInviteToken(TimeProvider timeProvider)
+    {
+        if (InviteStatus == InviteStatus.Accepted)
+            return Result<Casual>.Failure("Cannot resend invite to a casual who has already accepted");
+
+        InviteToken = Guid.NewGuid().ToString("N");
+        InviteExpiresAt = timeProvider.GetUtcNow().UtcDateTime.AddDays(1);
+
+        return Result<Casual>.Success(this);
+    }
+
+    /// <summary>
+    /// Opts the casual out of SMS notifications. They will no longer receive shift broadcasts.
+    /// </summary>
+    public Result<Casual> OptOut(string optOutToken, TimeProvider timeProvider)
+    {
+        if (OptOutToken != optOutToken)
+            return Result<Casual>.Failure("Invalid opt-out token");
+
+        if (OptedOutAt.HasValue)
+            return Result<Casual>.Failure("Already opted out");
+
+        OptedOutAt = timeProvider.GetUtcNow().UtcDateTime;
+        OptOutToken = null; // Clear token after use
+
+        return Result<Casual>.Success(this);
     }
 
     public Result<ShiftClaim> ClaimShift(Shift shift, TimeProvider timeProvider)
