@@ -45,7 +45,7 @@ public static class AddCasualEndpoint
             casual.PhoneNumber,
             casual.Name,
             pool.Name,
-            $"{baseUrl}/casual/verify?token={casual.InviteToken}"
+            $"{baseUrl}/casual/verify/{casual.InviteToken}"
         );
         db.OutboxMessages.Add(OutboxMessage.Create(payload, timeProvider));
 

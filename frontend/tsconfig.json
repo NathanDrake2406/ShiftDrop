@@ -5,7 +5,7 @@
     "module": "ESNext",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
-    "types": ["node", "vitest"],
+    "types": ["node", "vitest", "vite/client"],
 
     /* Strict Type Checking */
     "strict": true,
@@ -27,5 +27,6 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": ["vite.config.ts"]
 }

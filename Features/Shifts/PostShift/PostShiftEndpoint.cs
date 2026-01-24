@@ -42,6 +42,17 @@ public static class PostShiftEndpoint
 
         // Create ShiftNotification and queue SMS for each active casual
         var activeCasuals = pool.Casuals.Where(c => c.IsActive).ToList();
+
+        // Convert shift times to Australian Eastern Time for display
+        // Note: EF Core may return DateTime with Kind=Unspecified from PostgreSQL,
+        // so we explicitly specify UTC before converting
+        var aest = TimeZoneInfo.FindSystemTimeZoneById("Australia/Sydney");
+        var utcStart = DateTime.SpecifyKind(shift.StartsAt, DateTimeKind.Utc);
+        var utcEnd = DateTime.SpecifyKind(shift.EndsAt, DateTimeKind.Utc);
+        var localStart = TimeZoneInfo.ConvertTimeFromUtc(utcStart, aest);
+        var localEnd = TimeZoneInfo.ConvertTimeFromUtc(utcEnd, aest);
+        var shiftTimeDisplay = $"{localStart:ddd d MMM, h:mmtt} - {localEnd:h:mmtt}";
+
         foreach (var casual in activeCasuals)
         {
             var notification = ShiftNotification.Create(shift, casual, timeProvider);
@@ -50,7 +61,7 @@ public static class PostShiftEndpoint
             var payload = new ShiftBroadcastPayload(
                 notification.Id,
                 casual.PhoneNumber,
-                $"New shift: {shift.StartsAt:g} - {shift.EndsAt:g}. {shift.SpotsRemaining} spot(s)!",
+                $"New shift: {shiftTimeDisplay}. {shift.SpotsRemaining} spot(s)!",
                 $"{baseUrl}/casual/claim/{notification.ClaimToken}"
             );
             db.OutboxMessages.Add(OutboxMessage.Create(payload, timeProvider));

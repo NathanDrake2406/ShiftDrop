@@ -1,6 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiRequest } from "./apiClient";
-import { bailShift, claimShift, getAvailableShifts, getMyShifts } from "./casualApi";
+import {
+  bailShift,
+  claimByToken,
+  claimShift,
+  getAvailableShifts,
+  getMyShifts,
+  optOut,
+  verifyInvite,
+} from "./casualApi";
 
 vi.mock("./apiClient", () => ({
   apiRequest: vi.fn(),
@@ -20,7 +28,7 @@ describe("casualApi", () => {
 
     await getAvailableShifts(phoneNumber);
 
-    expect(apiRequestMock).toHaveBeenCalledWith(`/casual/available-shifts?${query}`);
+    expect(apiRequestMock).toHaveBeenCalledWith(`/casual/shifts?${query}`);
   });
 
   it("requests my shifts with phone number query", async () => {
@@ -49,9 +57,43 @@ describe("casualApi", () => {
 
     await bailShift("shift-1", "555-0101");
 
-    expect(apiRequestMock).toHaveBeenCalledWith("/casual/shifts/shift-1/bail", {
+    expect(apiRequestMock).toHaveBeenCalledWith("/casual/shifts/shift-1/release", {
       method: "POST",
       body: { phoneNumber: "555-0101" },
+    });
+  });
+
+  describe("token-based endpoints", () => {
+    it("posts verifyInvite with token body", async () => {
+      apiRequestMock.mockResolvedValueOnce({});
+
+      await verifyInvite("invite-token-123");
+
+      expect(apiRequestMock).toHaveBeenCalledWith("/casual/verify", {
+        method: "POST",
+        body: { token: "invite-token-123" },
+      });
+    });
+
+    it("posts optOut with token body", async () => {
+      apiRequestMock.mockResolvedValueOnce({});
+
+      await optOut("optout-token-456");
+
+      expect(apiRequestMock).toHaveBeenCalledWith("/casual/opt-out", {
+        method: "POST",
+        body: { token: "optout-token-456" },
+      });
+    });
+
+    it("posts claimByToken with token in URL", async () => {
+      apiRequestMock.mockResolvedValueOnce({});
+
+      await claimByToken("claim-token-789");
+
+      expect(apiRequestMock).toHaveBeenCalledWith("/casual/claim/claim-token-789", {
+        method: "POST",
+      });
     });
   });
 });

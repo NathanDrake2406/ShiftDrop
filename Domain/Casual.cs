@@ -43,11 +43,13 @@ public class Casual
         if (string.IsNullOrWhiteSpace(phoneNumber))
             return Result<Casual>.Failure("Phone number is required for SMS notifications");
 
+        var normalizedPhone = NormalizePhoneNumber(phoneNumber.Trim());
+
         var casual = new Casual
         {
             Id = Guid.NewGuid(),
             Name = name.Trim(),
-            PhoneNumber = phoneNumber.Trim(),
+            PhoneNumber = normalizedPhone,
             Pool = pool,
             PoolId = pool.Id,
             CreatedAt = timeProvider.GetUtcNow().UtcDateTime,
@@ -164,6 +166,31 @@ public class Casual
         shift.ReleaseClaim();
 
         return Result<ShiftClaim>.Success(claim);
+    }
+
+    /// <summary>
+    /// Normalizes phone numbers to E.164 format for Twilio.
+    /// Handles Australian numbers: 0412345678 → +61412345678
+    /// </summary>
+    private static string NormalizePhoneNumber(string phone)
+    {
+        // Remove spaces, dashes, parentheses
+        var digits = new string(phone.Where(c => char.IsDigit(c) || c == '+').ToArray());
+
+        // Already in E.164 format
+        if (digits.StartsWith('+'))
+            return digits;
+
+        // Australian mobile starting with 04xx → +614xx
+        if (digits.StartsWith("04") && digits.Length == 10)
+            return "+61" + digits[1..];
+
+        // Australian number without leading 0 (e.g., 61412345678)
+        if (digits.StartsWith("61") && digits.Length == 11)
+            return "+" + digits;
+
+        // Assume it needs a + prefix
+        return "+" + digits;
     }
 }
 

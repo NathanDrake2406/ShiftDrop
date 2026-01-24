@@ -25,11 +25,17 @@ export interface PoolDetailResponse extends PoolResponse {
 // Casual responses
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Invite status values from backend */
+export type InviteStatusValue = "Pending" | "Accepted";
+
 /** Casual worker in a pool */
 export interface CasualResponse {
   id: string;
   name: string;
   phoneNumber: string;
+  inviteStatus: InviteStatusValue;
+  isActive: boolean;
+  isOptedOut: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -91,10 +97,10 @@ export interface CreatePoolRequest {
 // Casual API responses (phone-based auth)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** GET /casual/available-shifts */
+/** GET /casual/shifts */
 export interface CasualAvailableShiftsResponse {
   casual: CasualResponse;
-  availableShifts: ShiftDetailResponse[];
+  availableShifts: ShiftResponse[];
 }
 
 /** POST /casual/shifts/:id/claim */
@@ -106,6 +112,48 @@ export interface ClaimShiftResponse {
 /** POST /casual/shifts/:id/bail */
 export interface BailShiftResponse {
   message: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Token-based casual endpoints (anonymous, SMS-initiated)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** POST /casual/verify - phone verification via invite token */
+export interface VerifyInviteRequest {
+  token: string;
+}
+
+export interface VerifyInviteResponse {
+  casualId: string;
+  casualName: string;
+  poolName: string;
+  message: string;
+}
+
+/** POST /casual/opt-out - unsubscribe from notifications */
+export interface OptOutRequest {
+  token: string;
+}
+
+export interface OptOutResponse {
+  message: string;
+}
+
+/** POST /casual/claim/:token - one-click shift claim from SMS */
+export interface ClaimByTokenResponse {
+  message: string;
+  shift: ShiftResponse;
+  casualName: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Manager casual management
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** POST /pools/:id/casuals/:casualId/resend-invite */
+export interface ResendInviteResponse {
+  message: string;
+  casual: CasualResponse;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

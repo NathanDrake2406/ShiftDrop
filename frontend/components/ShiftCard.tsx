@@ -1,18 +1,19 @@
-import React from "react";
-import { Shift, ShiftStatus, ClaimStatus } from "../types";
 import { Button } from "./ui/Button";
 import { Clock, Users, Calendar, X } from "lucide-react";
 import { formatDateDMY } from "../utils/date";
+import type { ShiftResponse, ShiftDetailResponse, ClaimStatusValue } from "../types/api";
 
 interface ShiftCardProps {
-  shift: Shift;
+  /** Accepts ShiftResponse (casual view) or ShiftDetailResponse (manager view with claims) */
+  shift: ShiftResponse | ShiftDetailResponse;
   onClaim?: (shiftId: string) => void;
   onCancel?: (shiftId: string) => void;
   onBail?: (shiftId: string) => void;
-  onReleaseClaim?: (shiftId: string, claimId: string) => void;
+  /** Release a casual from the shift by casualId */
+  onReleaseCasual?: (shiftId: string, casualId: string) => void;
   userType: "manager" | "casual";
   isLoading?: boolean;
-  userClaimStatus?: ClaimStatus;
+  userClaimStatus?: ClaimStatusValue;
 }
 
 export const ShiftCard: React.FC<ShiftCardProps> = ({
@@ -20,7 +21,7 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({
   onClaim,
   onCancel,
   onBail,
-  onReleaseClaim,
+  onReleaseCasual,
   userType,
   isLoading,
   userClaimStatus,
@@ -29,14 +30,12 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({
   const end = new Date(shift.endsAt);
   const durationHrs = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
 
-  const isFilled = shift.status === ShiftStatus.Filled;
-  const isCancelled = shift.status === ShiftStatus.Cancelled;
-  const isClaimedByUser = userClaimStatus === ClaimStatus.Claimed;
+  const isFilled = shift.status === "Filled";
+  const isCancelled = shift.status === "Cancelled";
+  const isClaimedByUser = userClaimStatus === "Claimed";
 
   return (
-    <div
-      className={`ui-surface rounded-2xl p-5 shadow-sm transition-all ${isCancelled ? "opacity-60" : ""}`}
-    >
+    <div className={`ui-surface rounded-2xl p-5 shadow-sm transition-all ${isCancelled ? "opacity-60" : ""}`}>
       <div className="flex justify-between items-start mb-3">
         <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm font-medium">
           <Calendar className="w-4 h-4" />
@@ -112,8 +111,8 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({
         </div>
       </div>
 
-      {/* Manager View Claims */}
-      {userType === "manager" && shift.claims.length > 0 && (
+      {/* Manager View Claims - only shown when claims data is available */}
+      {userType === "manager" && "claims" in shift && shift.claims.length > 0 && (
         <div className="mt-3 ui-surface-muted rounded-lg p-3">
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase">Who's working</p>
           <div className="space-y-2">
@@ -121,7 +120,7 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({
               .filter((c) => c.status === "Claimed")
               .map((claim) => (
                 <div
-                  key={claim.id}
+                  key={claim.casualId}
                   className="text-sm flex justify-between items-center bg-white dark:bg-slate-700 p-2 rounded border border-slate-100 dark:border-slate-600"
                 >
                   <span className="text-slate-800 dark:text-slate-200">{claim.casualName}</span>
@@ -130,7 +129,7 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({
                       {new Date(claim.claimedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </span>
                     <button
-                      onClick={() => onReleaseClaim?.(shift.id, claim.id)}
+                      onClick={() => onReleaseCasual?.(shift.id, claim.casualId)}
                       className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 p-1 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20"
                       title="Remove worker"
                     >
@@ -139,7 +138,6 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({
                   </div>
                 </div>
               ))}
-            {shift.claims.length === 0 && <span className="text-xs text-slate-400 italic">None yet</span>}
           </div>
         </div>
       )}

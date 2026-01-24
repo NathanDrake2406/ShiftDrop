@@ -8,8 +8,9 @@ import {
   getPoolShifts,
   getPools,
   postShift,
-  releaseClaim,
+  releaseCasual,
   removeCasual,
+  resendInvite,
 } from "./managerApi";
 
 vi.mock("./apiClient", () => ({
@@ -102,9 +103,15 @@ describe("managerApi", () => {
       options: { method: "POST", token },
     },
     {
-      label: "releaseClaim",
-      call: () => releaseClaim("pool-1", "shift-1", "claim-1", token),
-      path: "/pools/pool-1/shifts/shift-1/claims/claim-1/release",
+      label: "releaseCasual",
+      call: () => releaseCasual("pool-1", "shift-1", "casual-1", token),
+      path: "/pools/pool-1/shifts/shift-1/release/casual-1",
+      options: { method: "POST", token },
+    },
+    {
+      label: "resendInvite",
+      call: () => resendInvite("pool-1", "casual-1", token),
+      path: "/pools/pool-1/casuals/casual-1/resend-invite",
       options: { method: "POST", token },
     },
   ])("$label posts without body", async ({ call, path, options }) => {

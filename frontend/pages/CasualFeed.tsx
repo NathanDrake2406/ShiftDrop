@@ -1,43 +1,62 @@
-import React, { useEffect, useState } from "react";
-import { api } from "../services/mockApi";
-import { Shift, Casual, ClaimStatus } from "../types";
+import { useEffect, useState, useCallback } from "react";
 import { Layout } from "../components/ui/Layout";
 import { Button } from "../components/ui/Button";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { ShiftCard } from "../components/ShiftCard";
+import { ShiftCardSkeleton } from "../components/ui/Skeleton";
 import { formatDateDMY } from "../utils/date";
+import { useToast } from "../contexts/ToastContext";
+import * as casualApi from "../services/casualApi";
+import type { ShiftResponse } from "../types/api";
+import { ApiError } from "../types/api";
 
 interface CasualFeedProps {
-  currentUser: Casual;
+  currentUser: { phoneNumber: string; name: string; id: string };
   onLogout: () => void;
 }
 
 export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout }) => {
-  const [shifts, setShifts] = useState<Shift[]>([]);
+  const { showToast } = useToast();
+  const [availableShifts, setAvailableShifts] = useState<ShiftResponse[]>([]);
+  const [myShifts, setMyShifts] = useState<ShiftResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [claimingId, setClaimingId] = useState<string | null>(null);
 
   // Confirmation Modal State
-  const [confirmingShift, setConfirmingShift] = useState<Shift | null>(null);
-  const [confirmingBailShift, setConfirmingBailShift] = useState<Shift | null>(null);
+  const [confirmingShift, setConfirmingShift] = useState<ShiftResponse | null>(null);
+  const [confirmingBailShift, setConfirmingBailShift] = useState<ShiftResponse | null>(null);
   const [isBailing, setIsBailing] = useState(false);
+  const [isClaiming, setIsClaiming] = useState(false);
 
-  const loadShifts = async () => {
+  const loadShifts = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await api.casual.getAvailableShifts(currentUser.phoneNumber);
-      setShifts(data);
+      setError(null);
+      // Fetch both available shifts and claimed shifts in parallel
+      const [availableData, claimedData] = await Promise.all([
+        casualApi.getAvailableShifts(currentUser.phoneNumber),
+        casualApi.getMyShifts(currentUser.phoneNumber),
+      ]);
+      setAvailableShifts(availableData.availableShifts);
+      setMyShifts(claimedData);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Failed to load shifts");
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser.phoneNumber]);
 
   useEffect(() => {
     loadShifts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser]);
+  }, [loadShifts]);
 
   const handleClaimClick = (shiftId: string) => {
-    const shift = shifts.find((s) => s.id === shiftId);
+    const shift = availableShifts.find((s) => s.id === shiftId);
     if (shift) {
       setConfirmingShift(shift);
     }
@@ -46,20 +65,31 @@ export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout })
   const confirmClaim = async () => {
     if (!confirmingShift) return;
     const shiftId = confirmingShift.id;
-    setClaimingId(shiftId);
-    setConfirmingShift(null); // Close modal
+    setIsClaiming(true);
     try {
-      await api.casual.claimShift(shiftId, currentUser);
+      await casualApi.claimShift(shiftId, currentUser.phoneNumber);
+      showToast("Shift claimed! You're on the roster.", "success");
+      setConfirmingShift(null);
       await loadShifts();
-    } catch (e: any) {
-      alert(`Failed to claim: ${e.message}`);
+    } catch (err) {
+      setConfirmingShift(null);
+      if (err instanceof ApiError) {
+        if (err.isConflict) {
+          showToast("Sorry, this shift was just filled. Try another!", "error");
+        } else {
+          showToast(`Failed to claim: ${err.message}`, "error");
+        }
+      } else {
+        showToast("Failed to claim shift", "error");
+      }
     } finally {
       setClaimingId(null);
+      setIsClaiming(false);
     }
   };
 
   const handleBail = (shiftId: string) => {
-    const shift = shifts.find((s) => s.id === shiftId);
+    const shift = myShifts.find((s) => s.id === shiftId);
     if (shift) {
       setConfirmingBailShift(shift);
     }
@@ -67,28 +97,23 @@ export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout })
 
   const confirmBail = async () => {
     if (!confirmingBailShift) return;
-    setLoading(true);
     setIsBailing(true);
     try {
-      await api.casual.bailShift(confirmingBailShift.id, currentUser);
+      await casualApi.bailShift(confirmingBailShift.id, currentUser.phoneNumber);
+      showToast("You've bailed on the shift", "info");
+      setConfirmingBailShift(null);
       await loadShifts();
-    } catch (e: any) {
-      alert("Could not bail: " + e.message);
+    } catch (err) {
+      setConfirmingBailShift(null);
+      if (err instanceof ApiError) {
+        showToast(`Could not bail: ${err.message}`, "error");
+      } else {
+        showToast("Could not bail from shift", "error");
+      }
     } finally {
       setIsBailing(false);
-      setConfirmingBailShift(null);
-      setLoading(false);
     }
   };
-
-  // Separate shifts into Open and My Shifts
-  const myClaims = shifts.filter((s) =>
-    s.claims.some((c) => c.casualId === currentUser.id && c.status === ClaimStatus.Claimed),
-  );
-
-  const availableShifts = shifts.filter(
-    (s) => !s.claims.some((c) => c.casualId === currentUser.id) && s.status === "Open",
-  );
 
   return (
     <Layout
@@ -99,23 +124,37 @@ export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout })
         </Button>
       }
     >
-      {loading && shifts.length === 0 && <div className="text-center p-4 text-slate-400">Loading shifts...</div>}
+      {loading && availableShifts.length === 0 && myShifts.length === 0 && (
+        <div className="space-y-4">
+          <h2 className="ui-section-label">Available Now</h2>
+          <ShiftCardSkeleton />
+          <ShiftCardSkeleton />
+          <ShiftCardSkeleton />
+        </div>
+      )}
 
-      {!loading && (
+      {error && (
+        <div className="text-center p-4 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg mb-4">
+          {error}
+          <Button variant="secondary" size="sm" className="ml-4" onClick={loadShifts}>
+            Retry
+          </Button>
+        </div>
+      )}
+
+      {!loading && !error && (
         <>
           {/* Section: My Upcoming Shifts */}
-          {myClaims.length > 0 && (
+          {myShifts.length > 0 && (
             <div className="mb-6">
-              <h2 className="ui-section-label">
-                My Shifts
-              </h2>
+              <h2 className="ui-section-label">My Shifts</h2>
               <div className="space-y-4">
-                {myClaims.map((shift) => (
+                {myShifts.map((shift) => (
                   <ShiftCard
                     key={shift.id}
                     shift={shift}
                     userType="casual"
-                    userClaimStatus={ClaimStatus.Claimed}
+                    userClaimStatus="Claimed"
                     onBail={handleBail}
                   />
                 ))}
@@ -125,9 +164,7 @@ export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout })
 
           {/* Section: Available */}
           <div>
-            <h2 className="ui-section-label">
-              Available Now
-            </h2>
+            <h2 className="ui-section-label">Available Now</h2>
             {availableShifts.length === 0 ? (
               <div className="rounded-xl p-8 text-center text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800">
                 No new shifts available right now.
@@ -149,46 +186,30 @@ export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout })
         </>
       )}
 
-      {/* Confirmation Modal */}
-      {confirmingShift && (
-        <div className="ui-modal-backdrop animate-in fade-in duration-200">
-          <div className="ui-modal-panel max-w-xs scale-100">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Confirm Shift</h3>
-            <p className="text-slate-600 dark:text-slate-300 text-sm mb-6">
-              Are you sure you want to take this shift on{" "}
-              <span className="font-semibold">{formatDateDMY(new Date(confirmingShift.startsAt))}</span>?
-            </p>
-            <div className="flex gap-3">
-              <Button variant="secondary" className="flex-1" onClick={() => setConfirmingShift(null)}>
-                No, Cancel
-              </Button>
-              <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700" onClick={confirmClaim}>
-                Yes, Claim
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Confirm Claim Dialog */}
+      <ConfirmDialog
+        isOpen={confirmingShift !== null}
+        onClose={() => setConfirmingShift(null)}
+        onConfirm={confirmClaim}
+        title="Confirm Shift"
+        message={`Are you sure you want to take this shift on ${confirmingShift ? formatDateDMY(new Date(confirmingShift.startsAt)) : ""}?`}
+        confirmLabel="Yes, Claim"
+        cancelLabel="No, Cancel"
+        isLoading={isClaiming}
+      />
 
-      {confirmingBailShift && (
-        <div className="ui-modal-backdrop animate-in fade-in duration-200">
-          <div className="ui-modal-panel max-w-xs scale-100">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Bail on Shift</h3>
-            <p className="text-slate-600 dark:text-slate-300 text-sm mb-6">
-              Are you sure you want to bail on the shift on{" "}
-              <span className="font-semibold">{formatDateDMY(new Date(confirmingBailShift.startsAt))}</span>?
-            </p>
-            <div className="flex gap-3">
-              <Button variant="secondary" className="flex-1" onClick={() => setConfirmingBailShift(null)}>
-                Keep Shift
-              </Button>
-              <Button className="flex-1 bg-red-600 hover:bg-red-700" onClick={confirmBail} isLoading={isBailing}>
-                Bail
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Confirm Bail Dialog */}
+      <ConfirmDialog
+        isOpen={confirmingBailShift !== null}
+        onClose={() => setConfirmingBailShift(null)}
+        onConfirm={confirmBail}
+        title="Bail on Shift"
+        message={`Are you sure you want to bail on the shift on ${confirmingBailShift ? formatDateDMY(new Date(confirmingBailShift.startsAt)) : ""}?`}
+        confirmLabel="Bail"
+        cancelLabel="Keep Shift"
+        isDanger
+        isLoading={isBailing}
+      />
     </Layout>
   );
 };

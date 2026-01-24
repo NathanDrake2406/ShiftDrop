@@ -1,8 +1,12 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App';
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import App from "./App";
+import { Auth0Provider } from "./auth";
+import { ToastProvider } from "./contexts/ToastContext";
+import { ToastContainer } from "./components/ui/Toast";
 
-const rootElement = document.getElementById('root');
+const rootElement = document.getElementById("root");
 if (!rootElement) {
   throw new Error("Could not find root element to mount to");
 }
@@ -10,6 +14,13 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
-  </React.StrictMode>
+    <BrowserRouter>
+      <Auth0Provider>
+        <ToastProvider>
+          <App />
+          <ToastContainer />
+        </ToastProvider>
+      </Auth0Provider>
+    </BrowserRouter>
+  </React.StrictMode>,
 );

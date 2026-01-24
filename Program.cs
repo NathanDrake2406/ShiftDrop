@@ -10,15 +10,23 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton(TimeProvider.System);
-
-// SMS service: Console in Development, Twilio in Production
-if (builder.Environment.IsDevelopment())
+builder.Services.AddCors(options =>
 {
-    builder.Services.AddScoped<ISmsService, ConsoleSmsService>();
+    options.AddPolicy("DevCors", policy =>
+        policy.WithOrigins("http://localhost:3000")
+            .AllowAnyHeader()
+            .AllowAnyMethod());
+});
+
+// SMS service: Use Twilio if configured, otherwise Console (logs only)
+var twilioConfigured = !string.IsNullOrEmpty(builder.Configuration["Twilio:AccountSid"]);
+if (twilioConfigured)
+{
+    builder.Services.AddScoped<ISmsService, TwilioSmsService>();
 }
 else
 {
-    builder.Services.AddScoped<ISmsService, TwilioSmsService>();
+    builder.Services.AddScoped<ISmsService, ConsoleSmsService>();
 }
 
 builder.Services.AddHostedService<OutboxProcessor>();
@@ -48,6 +56,7 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    app.UseCors("DevCors");
 }
 
 if (!app.Environment.IsDevelopment())

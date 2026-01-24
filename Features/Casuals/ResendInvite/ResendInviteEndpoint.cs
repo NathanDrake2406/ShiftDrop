@@ -47,7 +47,7 @@ public static class ResendInviteEndpoint
             casual.PhoneNumber,
             casual.Name,
             casual.Pool.Name,
-            $"{baseUrl}/casual/verify?token={casual.InviteToken}"
+            $"{baseUrl}/casual/verify/{casual.InviteToken}"
         );
         db.OutboxMessages.Add(OutboxMessage.Create(payload, timeProvider));
 

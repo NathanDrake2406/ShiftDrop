@@ -6,14 +6,14 @@ import type {
   CreateShiftRequest,
   PoolDetailResponse,
   PoolResponse,
+  ResendInviteResponse,
   ShiftDetailResponse,
   ShiftResponse,
 } from "../types/api";
 
 export const getPools = (token: string) => apiRequest<PoolResponse[]>("/pools", { token });
 
-export const getPool = (poolId: string, token: string) =>
-  apiRequest<PoolDetailResponse>(`/pools/${poolId}`, { token });
+export const getPool = (poolId: string, token: string) => apiRequest<PoolDetailResponse>(`/pools/${poolId}`, { token });
 
 export const getPoolShifts = (poolId: string, token: string) =>
   apiRequest<ShiftDetailResponse[]>(`/pools/${poolId}/shifts`, { token });
@@ -37,5 +37,9 @@ export const removeCasual = (poolId: string, casualId: string, token: string) =>
 export const cancelShift = (poolId: string, shiftId: string, token: string) =>
   apiRequest<void>(`/pools/${poolId}/shifts/${shiftId}/cancel`, { method: "POST", token });
 
-export const releaseClaim = (poolId: string, shiftId: string, claimId: string, token: string) =>
-  apiRequest<void>(`/pools/${poolId}/shifts/${shiftId}/claims/${claimId}/release`, { method: "POST", token });
+/** Release a casual from a shift (manager action) */
+export const releaseCasual = (poolId: string, shiftId: string, casualId: string, token: string) =>
+  apiRequest<void>(`/pools/${poolId}/shifts/${shiftId}/release/${casualId}`, { method: "POST", token });
+
+export const resendInvite = (poolId: string, casualId: string, token: string) =>
+  apiRequest<ResendInviteResponse>(`/pools/${poolId}/casuals/${casualId}/resend-invite`, { method: "POST", token });
