@@ -18,4 +18,24 @@ public class ConsoleSmsService : ISmsService
         Console.WriteLine($"[SMS to {casual.PhoneNumber}] You've claimed the shift on {shift.StartsAt:g}. See you there!");
         return Task.CompletedTask;
     }
+
+    public Task SendShiftBroadcast(ShiftBroadcastPayload payload, CancellationToken ct)
+    {
+        Console.WriteLine($"[SMS to {payload.PhoneNumber}] {payload.ShiftDescription}");
+        Console.WriteLine($"  Claim now: {payload.ClaimUrl}");
+        return Task.CompletedTask;
+    }
+
+    public Task SendInviteSms(InviteSmsPayload payload, CancellationToken ct)
+    {
+        Console.WriteLine($"[SMS to {payload.PhoneNumber}] Hi {payload.CasualName}! You've been invited to join {payload.PoolName}.");
+        Console.WriteLine($"  Verify your phone: {payload.VerifyUrl}");
+        return Task.CompletedTask;
+    }
+
+    public Task SendClaimConfirmation(ClaimConfirmationPayload payload, CancellationToken ct)
+    {
+        Console.WriteLine($"[SMS to {payload.PhoneNumber}] Confirmed! {payload.ShiftDescription}");
+        return Task.CompletedTask;
+    }
 }

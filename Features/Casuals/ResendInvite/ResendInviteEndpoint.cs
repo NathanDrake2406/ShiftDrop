@@ -3,18 +3,18 @@ using Microsoft.EntityFrameworkCore;
 using ShiftDrop.Common.Responses;
 using ShiftDrop.Domain;
 
-namespace ShiftDrop.Features.Casuals.AddCasual;
+namespace ShiftDrop.Features.Casuals.ResendInvite;
 
-public static class AddCasualEndpoint
+public static class ResendInviteEndpoint
 {
-    public static void MapAddCasual(this RouteGroupBuilder group)
+    public static void MapResendInvite(this RouteGroupBuilder group)
     {
-        group.MapPost("/{poolId:guid}/casuals", Handle);
+        group.MapPost("/{poolId:guid}/casuals/{casualId:guid}/resend-invite", Handle);
     }
 
     private static async Task<IResult> Handle(
         Guid poolId,
-        AddCasualRequest request,
+        Guid casualId,
         AppDbContext db,
         TimeProvider timeProvider,
         IConfiguration config,
@@ -25,18 +25,20 @@ public static class AddCasualEndpoint
         if (string.IsNullOrEmpty(managerId))
             return Results.Unauthorized();
 
-        var pool = await db.Pools
-            .Include(p => p.Casuals)
-            .FirstOrDefaultAsync(p => p.Id == poolId && p.ManagerAuth0Id == managerId, ct);
+        var casual = await db.Casuals
+            .Include(c => c.Pool)
+            .FirstOrDefaultAsync(c =>
+                c.Id == casualId &&
+                c.PoolId == poolId &&
+                c.Pool.ManagerAuth0Id == managerId, ct);
 
-        if (pool == null)
+        if (casual == null)
             return Results.NotFound();
 
-        var result = pool.AddCasual(request.Name, request.PhoneNumber, timeProvider);
+        var result = casual.RegenerateInviteToken(timeProvider);
         if (result.IsFailure)
             return Results.BadRequest(new { error = result.Error });
 
-        var casual = result.Value!;
         var baseUrl = config["App:BaseUrl"] ?? "https://shiftdrop.local";
 
         // Queue invite SMS via outbox
@@ -44,17 +46,17 @@ public static class AddCasualEndpoint
             casual.Id,
             casual.PhoneNumber,
             casual.Name,
-            pool.Name,
+            casual.Pool.Name,
             $"{baseUrl}/casual/verify?token={casual.InviteToken}"
         );
         db.OutboxMessages.Add(OutboxMessage.Create(payload, timeProvider));
 
         await db.SaveChangesAsync(ct);
 
-        return Results.Created(
-            $"/pools/{poolId}/casuals/{casual.Id}",
-            new CasualResponse(casual));
+        return Results.Ok(new
+        {
+            message = "Invite resent successfully",
+            casual = new CasualResponse(casual)
+        });
     }
 }
-
-public record AddCasualRequest(string Name, string PhoneNumber);

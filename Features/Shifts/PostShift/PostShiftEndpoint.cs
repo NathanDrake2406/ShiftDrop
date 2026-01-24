@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using ShiftDrop.Common.Responses;
-using ShiftDrop.Common.Services;
+using ShiftDrop.Domain;
 
 namespace ShiftDrop.Features.Shifts.PostShift;
 
@@ -17,7 +17,7 @@ public static class PostShiftEndpoint
         PostShiftRequest request,
         AppDbContext db,
         TimeProvider timeProvider,
-        ISmsService smsService,
+        IConfiguration config,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
@@ -37,12 +37,30 @@ public static class PostShiftEndpoint
         if (result.IsFailure)
             return Results.BadRequest(new { error = result.Error });
 
+        var shift = result.Value!;
+        var baseUrl = config["App:BaseUrl"] ?? "https://shiftdrop.local";
+
+        // Create ShiftNotification and queue SMS for each active casual
+        var activeCasuals = pool.Casuals.Where(c => c.IsActive).ToList();
+        foreach (var casual in activeCasuals)
+        {
+            var notification = ShiftNotification.Create(shift, casual, timeProvider);
+            db.ShiftNotifications.Add(notification);
+
+            var payload = new ShiftBroadcastPayload(
+                notification.Id,
+                casual.PhoneNumber,
+                $"New shift: {shift.StartsAt:g} - {shift.EndsAt:g}. {shift.SpotsRemaining} spot(s)!",
+                $"{baseUrl}/casual/claim/{notification.ClaimToken}"
+            );
+            db.OutboxMessages.Add(OutboxMessage.Create(payload, timeProvider));
+        }
+
         await db.SaveChangesAsync(ct);
-        await smsService.BroadcastShiftAvailable(result.Value!, pool.Casuals);
 
         return Results.Created(
-            $"/pools/{poolId}/shifts/{result.Value!.Id}",
-            new ShiftResponse(result.Value!));
+            $"/pools/{poolId}/shifts/{shift.Id}",
+            new ShiftResponse(shift));
     }
 }
 

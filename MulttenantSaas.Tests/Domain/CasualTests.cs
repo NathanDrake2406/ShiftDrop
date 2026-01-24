@@ -60,14 +60,14 @@ public class CasualTests
     }
 
     [Fact]
-    public void Create_SetsInviteExpiryToSevenDays()
+    public void Create_SetsInviteExpiryToOneDay()
     {
         // Arrange & Act
         var result = _pool.AddCasual("Alice", "+61400123456", _timeProvider);
 
         // Assert
         var casual = result.Should().BeSuccess().Which;
-        var expectedExpiry = _fixedNow.AddDays(7);
+        var expectedExpiry = _fixedNow.AddDays(1);
         casual.InviteExpiresAt.Should().Be(expectedExpiry);
     }
 

@@ -67,12 +67,19 @@ public abstract class IntegrationTestBase : IClassFixture<ShiftDropWebApplicatio
     /// Seeds a complete test scenario: a pool with casuals and optional shifts.
     /// Returns the seeded entities for test assertions.
     /// </summary>
+    /// <param name="managerId">Auth0 ID of the manager</param>
+    /// <param name="poolName">Name of the pool</param>
+    /// <param name="casualCount">Number of casuals to create</param>
+    /// <param name="shiftCount">Number of shifts to create</param>
+    /// <param name="spotsPerShift">Spots per shift</param>
+    /// <param name="activateCasuals">If true, casuals will be marked as having accepted their invite</param>
     protected async Task<TestScenario> SeedScenarioAsync(
         string managerId,
         string poolName = "Test Pool",
         int casualCount = 1,
         int shiftCount = 0,
-        int spotsPerShift = 1)
+        int spotsPerShift = 1,
+        bool activateCasuals = false)
     {
         var scenario = new TestScenario();
 
@@ -89,7 +96,15 @@ public abstract class IntegrationTestBase : IClassFixture<ShiftDropWebApplicatio
                     $"Casual {i + 1}",
                     $"+6140000000{i}",
                     TimeProvider);
-                scenario.Casuals.Add(casualResult.Value!);
+                var casual = casualResult.Value!;
+
+                // Optionally activate casuals (accept their invite)
+                if (activateCasuals)
+                {
+                    casual.AcceptInvite(casual.InviteToken!, TimeProvider);
+                }
+
+                scenario.Casuals.Add(casual);
             }
 
             // Create shifts
@@ -124,6 +139,8 @@ public abstract class IntegrationTestBase : IClassFixture<ShiftDropWebApplicatio
         // Clear all data before each test
         await ExecuteDbAsync(async db =>
         {
+            db.OutboxMessages.RemoveRange(db.OutboxMessages);
+            db.ShiftNotifications.RemoveRange(db.ShiftNotifications);
             db.ShiftClaims.RemoveRange(db.ShiftClaims);
             db.Shifts.RemoveRange(db.Shifts);
             db.Casuals.RemoveRange(db.Casuals);

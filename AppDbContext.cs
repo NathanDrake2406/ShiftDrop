@@ -10,6 +10,8 @@ public class AppDbContext : DbContext
     public DbSet<Casual> Casuals => Set<Casual>();
     public DbSet<Shift> Shifts => Set<Shift>();
     public DbSet<ShiftClaim> ShiftClaims => Set<ShiftClaim>();
+    public DbSet<ShiftNotification> ShiftNotifications => Set<ShiftNotification>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -20,7 +22,7 @@ public class AppDbContext : DbContext
             entity.Property(p => p.Name).HasMaxLength(200).IsRequired();
             entity.Property(p => p.ManagerAuth0Id).HasMaxLength(200).IsRequired();
             entity.HasIndex(p => p.ManagerAuth0Id);
-            
+
             // Use backing field for proper change tracking with IReadOnlyCollection
             entity.Navigation(p => p.Casuals).UsePropertyAccessMode(PropertyAccessMode.Field);
             entity.HasMany(p => p.Casuals)
@@ -42,7 +44,20 @@ public class AppDbContext : DbContext
             entity.Property(c => c.Name).HasMaxLength(200).IsRequired();
             entity.Property(c => c.PhoneNumber).HasMaxLength(50).IsRequired();
             entity.HasIndex(c => new { c.PoolId, c.PhoneNumber }).IsUnique();
-            
+
+            // Token fields for SMS-based verification
+            entity.Property(c => c.InviteToken).HasMaxLength(32);
+            entity.Property(c => c.InviteStatus).HasConversion<string>().HasMaxLength(20);
+            entity.Property(c => c.OptOutToken).HasMaxLength(32);
+
+            // Filtered indexes for token lookups (only index non-null tokens)
+            entity.HasIndex(c => c.InviteToken)
+                .HasFilter("\"InviteToken\" IS NOT NULL")
+                .IsUnique();
+            entity.HasIndex(c => c.OptOutToken)
+                .HasFilter("\"OptOutToken\" IS NOT NULL")
+                .IsUnique();
+
             // Use backing field for proper change tracking with IReadOnlyCollection
             entity.Navigation(c => c.Claims).UsePropertyAccessMode(PropertyAccessMode.Field);
             entity.HasMany(c => c.Claims)
@@ -56,12 +71,12 @@ public class AppDbContext : DbContext
             entity.HasKey(s => s.Id);
             entity.Property(s => s.Id).ValueGeneratedNever(); // Domain generates IDs
             entity.Property(s => s.Status).HasConversion<string>().HasMaxLength(20);
-            
+
             // Concurrency token to handle race conditions on claim
             entity.Property(s => s.SpotsRemaining).IsConcurrencyToken();
-            
+
             entity.HasIndex(s => new { s.PoolId, s.Status, s.StartsAt });
-            
+
             // Use backing field for proper change tracking with IReadOnlyCollection
             entity.Navigation(s => s.Claims).UsePropertyAccessMode(PropertyAccessMode.Field);
             entity.HasMany(s => s.Claims)
@@ -77,6 +92,47 @@ public class AppDbContext : DbContext
             entity.Property(sc => sc.Id).ValueGeneratedNever();
             entity.Property(sc => sc.Status).HasConversion<string>().HasMaxLength(20);
             entity.HasIndex(sc => new { sc.ShiftId, sc.CasualId, sc.Status });
+        });
+
+        modelBuilder.Entity<ShiftNotification>(entity =>
+        {
+            entity.HasKey(sn => sn.Id);
+            entity.Property(sn => sn.Id).ValueGeneratedNever(); // Domain generates IDs
+
+            entity.Property(sn => sn.ClaimToken).HasMaxLength(32).IsRequired();
+            entity.Property(sn => sn.TokenStatus).HasConversion<string>().HasMaxLength(20);
+
+            // Unique index on claim token for fast lookups
+            entity.HasIndex(sn => sn.ClaimToken).IsUnique();
+
+            // Index for finding pending notifications by shift (for revocation)
+            entity.HasIndex(sn => new { sn.ShiftId, sn.TokenStatus });
+
+            // Relationships
+            entity.HasOne(sn => sn.Shift)
+                .WithMany()
+                .HasForeignKey(sn => sn.ShiftId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(sn => sn.Casual)
+                .WithMany()
+                .HasForeignKey(sn => sn.CasualId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<OutboxMessage>(entity =>
+        {
+            entity.HasKey(om => om.Id);
+            entity.Property(om => om.Id).ValueGeneratedNever(); // Domain generates IDs
+
+            entity.Property(om => om.MessageType).HasMaxLength(100).IsRequired();
+            entity.Property(om => om.Payload).IsRequired(); // JSON text, no max length
+            entity.Property(om => om.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(om => om.LastError).HasMaxLength(1000);
+
+            // Index for outbox processor to find pending messages ready for processing
+            entity.HasIndex(om => new { om.Status, om.NextRetryAt })
+                .HasFilter("\"Status\" = 'Pending'");
         });
     }
 }
