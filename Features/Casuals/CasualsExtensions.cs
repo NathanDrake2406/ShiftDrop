@@ -1,7 +1,9 @@
 using ShiftDrop.Features.Casuals.AddCasual;
+using ShiftDrop.Features.Casuals.GetAvailability;
 using ShiftDrop.Features.Casuals.OptOut;
 using ShiftDrop.Features.Casuals.RemoveCasual;
 using ShiftDrop.Features.Casuals.ResendInvite;
+using ShiftDrop.Features.Casuals.SetAvailability;
 using ShiftDrop.Features.Casuals.VerifyInvite;
 
 namespace ShiftDrop.Features.Casuals;
@@ -17,6 +19,8 @@ public static class CasualsExtensions
         group.MapAddCasual();
         group.MapRemoveCasual();
         group.MapResendInvite();
+        group.MapGetAvailability();
+        group.MapSetAvailability();
     }
 
     /// <summary>
