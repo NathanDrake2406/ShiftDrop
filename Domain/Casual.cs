@@ -28,6 +28,9 @@ public class Casual
     private readonly List<ShiftClaim> _claims = new();
     public IReadOnlyCollection<ShiftClaim> Claims => _claims.AsReadOnly();
 
+    private readonly List<CasualAvailability> _availability = new();
+    public IReadOnlyCollection<CasualAvailability> Availability => _availability.AsReadOnly();
+
     private Casual() { }
 
     internal static Result<Casual> Create(
@@ -166,6 +169,39 @@ public class Casual
         shift.ReleaseClaim();
 
         return Result<ShiftClaim>.Success(claim);
+    }
+
+    /// <summary>
+    /// Checks if the casual is available for a shift at the given time.
+    /// Returns true if: no availability set (default = available anytime) OR
+    /// shift fits entirely within availability window for that day.
+    /// </summary>
+    public bool IsAvailableFor(DateTime shiftStart, DateTime shiftEnd)
+    {
+        // No availability records = available anytime (backwards compatible)
+        if (!_availability.Any())
+            return true;
+
+        var dayAvailability = _availability.FirstOrDefault(a => a.DayOfWeek == shiftStart.DayOfWeek);
+        if (dayAvailability == null)
+            return false;
+
+        var shiftStartTime = TimeOnly.FromDateTime(shiftStart);
+        var shiftEndTime = TimeOnly.FromDateTime(shiftEnd);
+
+        // Shift must fit entirely within availability window
+        return shiftStartTime >= dayAvailability.FromTime
+            && shiftEndTime <= dayAvailability.ToTime;
+    }
+
+    /// <summary>
+    /// Replaces all availability records with the provided list.
+    /// Called from the endpoint after validating each slot.
+    /// </summary>
+    public void SetAvailability(IEnumerable<CasualAvailability> availability)
+    {
+        _availability.Clear();
+        _availability.AddRange(availability);
     }
 
     /// <summary>
