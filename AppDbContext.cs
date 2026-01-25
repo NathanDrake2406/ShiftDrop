@@ -12,6 +12,7 @@ public class AppDbContext : DbContext
     public DbSet<ShiftClaim> ShiftClaims => Set<ShiftClaim>();
     public DbSet<ShiftNotification> ShiftNotifications => Set<ShiftNotification>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<PoolAdmin> PoolAdmins => Set<PoolAdmin>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -35,6 +36,8 @@ public class AppDbContext : DbContext
                 .WithOne(s => s.Pool)
                 .HasForeignKey(s => s.PoolId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Navigation(p => p.Admins).UsePropertyAccessMode(PropertyAccessMode.Field);
         });
 
         modelBuilder.Entity<Casual>(entity =>
@@ -133,6 +136,34 @@ public class AppDbContext : DbContext
             // Index for outbox processor to find pending messages ready for processing
             entity.HasIndex(om => new { om.Status, om.NextRetryAt })
                 .HasFilter("\"Status\" = 'Pending'");
+        });
+
+        modelBuilder.Entity<PoolAdmin>(entity =>
+        {
+            entity.HasKey(pa => pa.Id);
+            entity.Property(pa => pa.Id).ValueGeneratedNever(); // Domain generates IDs
+
+            entity.Property(pa => pa.Email).HasMaxLength(200).IsRequired();
+            entity.Property(pa => pa.Name).HasMaxLength(200).IsRequired();
+            entity.Property(pa => pa.Auth0Id).HasMaxLength(200);
+            entity.Property(pa => pa.InviteToken).HasMaxLength(32);
+
+            // Unique index on pool + email (one admin per email per pool)
+            entity.HasIndex(pa => new { pa.PoolId, pa.Email }).IsUnique();
+
+            // Index for token lookup (for accepting invites)
+            entity.HasIndex(pa => pa.InviteToken)
+                .IsUnique()
+                .HasFilter("\"InviteToken\" IS NOT NULL");
+
+            // Index for Auth0Id lookup (to find pools user is admin of)
+            entity.HasIndex(pa => pa.Auth0Id)
+                .HasFilter("\"Auth0Id\" IS NOT NULL");
+
+            entity.HasOne(pa => pa.Pool)
+                .WithMany(p => p.Admins)
+                .HasForeignKey(pa => pa.PoolId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
