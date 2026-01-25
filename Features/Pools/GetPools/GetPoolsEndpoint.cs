@@ -21,7 +21,9 @@ public static class GetPoolsEndpoint
             return Results.Unauthorized();
 
         var pools = await db.Pools
-            .Where(p => p.ManagerAuth0Id == managerId)
+            .Include(p => p.Admins)
+            .Where(p => p.ManagerAuth0Id == managerId ||
+                        p.Admins.Any(a => a.Auth0Id == managerId && a.AcceptedAt != null))
             .Select(p => new PoolResponse(p))
             .ToListAsync(ct);
 

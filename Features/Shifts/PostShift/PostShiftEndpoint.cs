@@ -28,10 +28,14 @@ public static class PostShiftEndpoint
         var pool = await db.Pools
             .Include(p => p.Casuals)
             .Include(p => p.Shifts)
-            .FirstOrDefaultAsync(p => p.Id == poolId && p.ManagerAuth0Id == managerId, ct);
+            .Include(p => p.Admins)
+            .FirstOrDefaultAsync(p => p.Id == poolId, ct);
 
         if (pool == null)
             return Results.NotFound();
+
+        if (!pool.IsAuthorized(managerId))
+            return Results.Forbid();
 
         var result = pool.PostShift(request.StartsAt, request.EndsAt, request.SpotsNeeded, timeProvider);
         if (result.IsFailure)

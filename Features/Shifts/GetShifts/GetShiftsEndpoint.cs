@@ -22,10 +22,14 @@ public static class GetShiftsEndpoint
             return Results.Unauthorized();
 
         var pool = await db.Pools
-            .FirstOrDefaultAsync(p => p.Id == poolId && p.ManagerAuth0Id == managerId, ct);
+            .Include(p => p.Admins)
+            .FirstOrDefaultAsync(p => p.Id == poolId, ct);
 
         if (pool == null)
             return Results.NotFound();
+
+        if (!pool.IsAuthorized(managerId))
+            return Results.Forbid();
 
         var shifts = await db.Shifts
             .Where(s => s.PoolId == poolId)

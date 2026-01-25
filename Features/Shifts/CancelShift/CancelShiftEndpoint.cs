@@ -23,8 +23,18 @@ public static class CancelShiftEndpoint
         if (string.IsNullOrEmpty(managerId))
             return Results.Unauthorized();
 
+        var pool = await db.Pools
+            .Include(p => p.Admins)
+            .FirstOrDefaultAsync(p => p.Id == poolId, ct);
+
+        if (pool == null)
+            return Results.NotFound();
+
+        if (!pool.IsAuthorized(managerId))
+            return Results.Forbid();
+
         var shift = await db.Shifts
-            .FirstOrDefaultAsync(s => s.Id == shiftId && s.PoolId == poolId && s.Pool.ManagerAuth0Id == managerId, ct);
+            .FirstOrDefaultAsync(s => s.Id == shiftId && s.PoolId == poolId, ct);
 
         if (shift == null)
             return Results.NotFound();

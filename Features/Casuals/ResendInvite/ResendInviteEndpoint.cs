@@ -25,12 +25,19 @@ public static class ResendInviteEndpoint
         if (string.IsNullOrEmpty(managerId))
             return Results.Unauthorized();
 
+        var pool = await db.Pools
+            .Include(p => p.Admins)
+            .FirstOrDefaultAsync(p => p.Id == poolId, ct);
+
+        if (pool == null)
+            return Results.NotFound();
+
+        if (!pool.IsAuthorized(managerId))
+            return Results.Forbid();
+
         var casual = await db.Casuals
             .Include(c => c.Pool)
-            .FirstOrDefaultAsync(c =>
-                c.Id == casualId &&
-                c.PoolId == poolId &&
-                c.Pool.ManagerAuth0Id == managerId, ct);
+            .FirstOrDefaultAsync(c => c.Id == casualId && c.PoolId == poolId, ct);
 
         if (casual == null)
             return Results.NotFound();
