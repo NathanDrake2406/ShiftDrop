@@ -27,6 +27,7 @@ public static class PostShiftEndpoint
 
         var pool = await db.Pools
             .Include(p => p.Casuals)
+                .ThenInclude(c => c.Availability)
             .Include(p => p.Shifts)
             .Include(p => p.Admins)
             .FirstOrDefaultAsync(p => p.Id == poolId, ct);
@@ -44,8 +45,10 @@ public static class PostShiftEndpoint
         var shift = result.Value!;
         var baseUrl = config["App:BaseUrl"] ?? "https://shiftdrop.local";
 
-        // Create ShiftNotification and queue SMS for each active casual
-        var activeCasuals = pool.Casuals.Where(c => c.IsActive).ToList();
+        // Create ShiftNotification and queue SMS for each active casual who is available
+        var activeCasuals = pool.Casuals
+            .Where(c => c.IsActive && c.IsAvailableFor(shift.StartsAt, shift.EndsAt))
+            .ToList();
 
         // Convert shift times to Australian Eastern Time for display
         // Note: EF Core may return DateTime with Kind=Unspecified from PostgreSQL,
