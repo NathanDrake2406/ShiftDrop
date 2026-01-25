@@ -157,6 +157,48 @@ export interface ResendInviteResponse {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Pool Admin (2IC) types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Pool admin (2IC) response */
+export interface PoolAdminResponse {
+  id: string;
+  email: string;
+  name: string;
+  invitedAt: string; // ISO 8601
+  acceptedAt: string | null; // ISO 8601 or null if pending
+  isAccepted: boolean;
+}
+
+/** POST /pools/:id/admins */
+export interface InviteAdminRequest {
+  email: string;
+  name: string;
+}
+
+/** POST /pool-admins/accept/:token */
+export interface AcceptAdminInviteResponse {
+  poolName: string;
+  message: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Casual Availability types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Availability slot for a specific day */
+export interface AvailabilitySlot {
+  dayOfWeek: number; // 0=Sun, 6=Sat
+  fromTime: string; // "HH:mm"
+  toTime: string; // "HH:mm"
+}
+
+/** PUT /pools/:id/casuals/:casualId/availability */
+export interface SetAvailabilityRequest {
+  availability: AvailabilitySlot[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Error handling
 // ─────────────────────────────────────────────────────────────────────────────
 
