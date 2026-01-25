@@ -6,11 +6,20 @@ import { Modal } from "../components/ui/Modal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { ShiftCard } from "../components/ShiftCard";
 import { ShiftCardSkeleton } from "../components/ui/Skeleton";
-import { Plus, Trash2, RefreshCw } from "lucide-react";
+import { TeamTab } from "../components/TeamTab";
+import { AvailabilityEditor } from "../components/AvailabilityEditor";
+import { Plus, Trash2, RefreshCw, Calendar } from "lucide-react";
 import { useAuth } from "../auth";
 import { useToast } from "../contexts/ToastContext";
+import { useDemo } from "../contexts/DemoContext";
 import * as managerApi from "../services/managerApi";
-import type { PoolDetailResponse, ShiftDetailResponse, CasualResponse } from "../types/api";
+import type {
+  PoolDetailResponse,
+  ShiftDetailResponse,
+  CasualResponse,
+  PoolAdminResponse,
+  AvailabilitySlot,
+} from "../types/api";
 import { ApiError } from "../types/api";
 
 export const PoolDetails: React.FC = () => {
@@ -18,12 +27,19 @@ export const PoolDetails: React.FC = () => {
   const navigate = useNavigate();
   const { getAccessToken } = useAuth();
   const { showToast } = useToast();
+  const { demoMode } = useDemo();
 
   const [pool, setPool] = useState<PoolDetailResponse | null>(null);
   const [shifts, setShifts] = useState<ShiftDetailResponse[]>([]);
+  const [admins, setAdmins] = useState<PoolAdminResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"shifts" | "casuals">("shifts");
+  const [activeTab, setActiveTab] = useState<"shifts" | "casuals" | "team">("shifts");
+
+  // Availability state
+  const [selectedCasual, setSelectedCasual] = useState<CasualResponse | null>(null);
+  const [casualAvailability, setCasualAvailability] = useState<AvailabilitySlot[]>([]);
+  const [loadingAvailability, setLoadingAvailability] = useState(false);
 
   // Create Shift State
   const toDateInput = (date: Date) => {
@@ -129,15 +145,21 @@ export const PoolDetails: React.FC = () => {
     setLoading(true);
     try {
       const token = await getAccessToken();
-      if (!token) return;
+      if (!token) {
+        setError("Unable to authenticate. Please try logging in again.");
+        setLoading(false);
+        return;
+      }
 
-      const [poolData, shiftsData] = await Promise.all([
+      const [poolData, shiftsData, adminsData] = await Promise.all([
         managerApi.getPool(id, token),
         managerApi.getPoolShifts(id, token),
+        managerApi.getPoolAdmins(id, token),
       ]);
 
       setPool(poolData);
       setShifts(shiftsData);
+      setAdmins(adminsData);
       setError(null);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -149,6 +171,51 @@ export const PoolDetails: React.FC = () => {
       setLoading(false);
     }
   }, [id, getAccessToken]);
+
+  // Admin handlers
+  const handleInviteAdmin = async (email: string, name: string) => {
+    if (!id) return;
+    const token = await getAccessToken();
+    if (!token) throw new Error("Unable to authenticate");
+    await managerApi.inviteAdmin(id, { email, name }, token);
+    showToast(`Invite sent to ${email}`, "success");
+    loadData();
+  };
+
+  const handleRemoveAdmin = async (adminId: string) => {
+    if (!id) return;
+    const token = await getAccessToken();
+    if (!token) throw new Error("Unable to authenticate");
+    await managerApi.removeAdmin(id, adminId, token);
+    showToast("Admin removed", "success");
+    loadData();
+  };
+
+  // Availability handlers
+  const handleOpenAvailability = async (casual: CasualResponse) => {
+    if (!id) return;
+    setSelectedCasual(casual);
+    setLoadingAvailability(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      const availability = await managerApi.getCasualAvailability(id, casual.id, token);
+      setCasualAvailability(availability);
+    } catch {
+      setCasualAvailability([]);
+    } finally {
+      setLoadingAvailability(false);
+    }
+  };
+
+  const handleSaveAvailability = async (availability: AvailabilitySlot[]) => {
+    if (!id || !selectedCasual) return;
+    const token = await getAccessToken();
+    if (!token) throw new Error("Unable to authenticate");
+    await managerApi.setCasualAvailability(id, selectedCasual.id, availability, token);
+    showToast("Availability saved", "success");
+    setSelectedCasual(null);
+  };
 
   useEffect(() => {
     loadData();
@@ -415,6 +482,12 @@ export const PoolDetails: React.FC = () => {
         >
           Casuals ({pool.casuals.length})
         </button>
+        <button
+          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === "team" ? "bg-white dark:bg-slate-700 shadow text-blue-600 dark:text-blue-400" : "text-slate-500 dark:text-slate-400"}`}
+          onClick={() => setActiveTab("team")}
+        >
+          Team
+        </button>
       </div>
 
       {activeTab === "shifts" && (
@@ -452,6 +525,7 @@ export const PoolDetails: React.FC = () => {
                   casual={casual}
                   onRemove={() => handleRemoveCasual(casual.id)}
                   onResendInvite={() => handleResendInvite(casual)}
+                  onEditAvailability={() => handleOpenAvailability(casual)}
                   isResending={resendingInvite === casual.id}
                 />
               ))}
@@ -467,6 +541,7 @@ export const PoolDetails: React.FC = () => {
                   casual={casual}
                   onRemove={() => handleRemoveCasual(casual.id)}
                   onResendInvite={() => handleResendInvite(casual)}
+                  onEditAvailability={() => handleOpenAvailability(casual)}
                   isResending={resendingInvite === casual.id}
                 />
               ))}
@@ -477,6 +552,16 @@ export const PoolDetails: React.FC = () => {
             <div className="text-center py-10 text-slate-400">No casuals yet. Add your first team member!</div>
           )}
         </div>
+      )}
+
+      {activeTab === "team" && (
+        <TeamTab
+          ownerLabel="You (Owner)"
+          admins={admins}
+          onInviteAdmin={handleInviteAdmin}
+          onRemoveAdmin={handleRemoveAdmin}
+          isDemoMode={demoMode}
+        />
       )}
 
       {/* Floating Action Button for Create */}
@@ -637,6 +722,19 @@ export const PoolDetails: React.FC = () => {
         isDanger={confirmAction?.type === "cancelShift" || confirmAction?.type === "removeCasual"}
         isLoading={isConfirmingAction}
       />
+
+      {/* Availability Modal */}
+      <Modal
+        isOpen={selectedCasual !== null}
+        onClose={() => setSelectedCasual(null)}
+        title={selectedCasual ? `${selectedCasual.name}'s Availability` : "Availability"}
+      >
+        <AvailabilityEditor
+          availability={casualAvailability}
+          onSave={handleSaveAvailability}
+          isLoading={loadingAvailability}
+        />
+      </Modal>
     </Layout>
   );
 };
@@ -646,10 +744,11 @@ interface CasualRowProps {
   casual: CasualResponse;
   onRemove: () => void;
   onResendInvite: () => void;
+  onEditAvailability: () => void;
   isResending: boolean;
 }
 
-function CasualRow({ casual, onRemove, onResendInvite, isResending }: CasualRowProps) {
+function CasualRow({ casual, onRemove, onResendInvite, onEditAvailability, isResending }: CasualRowProps) {
   const statusBadge = casual.isOptedOut ? (
     <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
       Opted Out
@@ -674,6 +773,13 @@ function CasualRow({ casual, onRemove, onResendInvite, isResending }: CasualRowP
       </div>
       <div className="flex items-center gap-2">
         {statusBadge}
+        <button
+          onClick={onEditAvailability}
+          className="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+          title="Edit availability"
+        >
+          <Calendar className="w-4 h-4" />
+        </button>
         {canResend && (
           <button
             onClick={onResendInvite}
