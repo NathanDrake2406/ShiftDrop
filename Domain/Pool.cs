@@ -13,6 +13,9 @@ public class Pool
     private readonly List<Shift> _shifts = new();
     public IReadOnlyCollection<Shift> Shifts => _shifts.AsReadOnly();
 
+    private readonly List<PoolAdmin> _admins = new();
+    public IReadOnlyCollection<PoolAdmin> Admins => _admins.AsReadOnly();
+
     private Pool() { }
 
     public static Result<Pool> Create(string name, string managerAuth0Id, TimeProvider timeProvider)
@@ -57,5 +60,45 @@ public class Pool
     public void RemoveCasual(Casual casual)
     {
         _casuals.Remove(casual);
+    }
+
+    /// <summary>
+    /// Returns true if the given Auth0 ID is authorized to manage this pool
+    /// (either as owner or as an accepted admin).
+    /// </summary>
+    public bool IsAuthorized(string auth0Id)
+    {
+        if (string.IsNullOrEmpty(auth0Id))
+            return false;
+
+        if (ManagerAuth0Id == auth0Id)
+            return true;
+
+        return _admins.Any(a => a.IsAccepted && a.Auth0Id == auth0Id);
+    }
+
+    public Result<PoolAdmin> InviteAdmin(string email, string name, TimeProvider timeProvider)
+    {
+        // Check for existing admin with same email (normalized to match storage format)
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        if (_admins.Any(a => a.Email == normalizedEmail))
+            return Result<PoolAdmin>.Failure("An admin with this email already exists");
+
+        var adminResult = PoolAdmin.Create(email, name, this, timeProvider);
+        if (adminResult.IsFailure)
+            return adminResult;
+
+        _admins.Add(adminResult.Value!);
+        return adminResult;
+    }
+
+    public Result<Pool> RemoveAdmin(Guid adminId)
+    {
+        var admin = _admins.FirstOrDefault(a => a.Id == adminId);
+        if (admin == null)
+            return Result<Pool>.Failure("Admin not found");
+
+        _admins.Remove(admin);
+        return Result<Pool>.Success(this);
     }
 }
