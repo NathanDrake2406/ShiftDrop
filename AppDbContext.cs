@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<ShiftNotification> ShiftNotifications => Set<ShiftNotification>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<PoolAdmin> PoolAdmins => Set<PoolAdmin>();
+    public DbSet<CasualAvailability> CasualAvailability => Set<CasualAvailability>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -67,6 +68,8 @@ public class AppDbContext : DbContext
                 .WithOne(sc => sc.Casual)
                 .HasForeignKey(sc => sc.CasualId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Navigation(c => c.Availability).UsePropertyAccessMode(PropertyAccessMode.Field);
         });
 
         modelBuilder.Entity<Shift>(entity =>
@@ -163,6 +166,22 @@ public class AppDbContext : DbContext
             entity.HasOne(pa => pa.Pool)
                 .WithMany(p => p.Admins)
                 .HasForeignKey(pa => pa.PoolId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CasualAvailability>(entity =>
+        {
+            entity.HasKey(ca => ca.Id);
+            entity.Property(ca => ca.Id).ValueGeneratedNever(); // Domain generates IDs
+
+            entity.Property(ca => ca.DayOfWeek).HasConversion<int>();
+
+            // Unique constraint: one entry per casual per day
+            entity.HasIndex(ca => new { ca.CasualId, ca.DayOfWeek }).IsUnique();
+
+            entity.HasOne(ca => ca.Casual)
+                .WithMany(c => c.Availability)
+                .HasForeignKey(ca => ca.CasualId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }
