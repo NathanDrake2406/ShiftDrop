@@ -38,6 +38,9 @@ export const createPool = (name: string, token: string) => {
   return apiRequest<PoolResponse>("/pools", { method: "POST", body, token });
 };
 
+export const deletePool = (poolId: string, token: string) =>
+  getDemoMode() ? demoManagerApi.deletePool(poolId) : apiRequest<void>(`/pools/${poolId}`, { method: "DELETE", token });
+
 export const addCasual = (poolId: string, name: string, phoneNumber: string, token: string) => {
   if (getDemoMode()) {
     return demoManagerApi.addCasual(poolId, name, phoneNumber);

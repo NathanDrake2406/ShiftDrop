@@ -105,6 +105,10 @@ export const demoManagerApi = {
     return toPoolResponse(pool);
   },
 
+  deletePool: async (poolId: string): Promise<void> => {
+    await mockApi.manager.deletePool(poolId);
+  },
+
   addCasual: async (poolId: string, name: string, phoneNumber: string): Promise<CasualResponse> => {
     const casual = await mockApi.manager.addCasual(poolId, name, phoneNumber);
     return toCasualResponse(casual);
@@ -168,7 +172,9 @@ export const demoCasualApi = {
     const casual = await getCasualOrThrow(phoneNumber);
     const shifts = await mockApi.casual.getAvailableShifts(phoneNumber);
     return shifts
-      .filter((shift) => shift.claims.some((claim) => claim.casualId === casual.id && claim.status === ClaimStatus.Claimed))
+      .filter((shift) =>
+        shift.claims.some((claim) => claim.casualId === casual.id && claim.status === ClaimStatus.Claimed),
+      )
       .map(toShiftResponse);
   },
 

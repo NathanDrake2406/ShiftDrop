@@ -3,7 +3,7 @@ import { Layout } from "../components/ui/Layout";
 import { Button } from "../components/ui/Button";
 import { PoolCardSkeleton } from "../components/ui/Skeleton";
 import { useNavigate } from "react-router-dom";
-import { Plus, X, ChevronRight } from "lucide-react";
+import { Plus, X, ChevronRight, Trash2 } from "lucide-react";
 import { useAuth } from "../auth";
 import { useDemo } from "../contexts/DemoContext";
 import * as managerApi from "../services/managerApi";
@@ -21,6 +21,8 @@ export const ManagerDashboard: React.FC = () => {
   const [poolName, setPoolName] = useState("");
   const [poolError, setPoolError] = useState<string | null>(null);
   const [isSavingPool, setIsSavingPool] = useState(false);
+  const [deletingPool, setDeletingPool] = useState<PoolResponse | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const fetchPools = async () => {
@@ -85,6 +87,26 @@ export const ManagerDashboard: React.FC = () => {
     }
   };
 
+  const handleDeletePool = async () => {
+    if (!deletingPool) return;
+    setIsDeleting(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      await managerApi.deletePool(deletingPool.id, token);
+      setPools((prev) => prev.filter((p) => p.id !== deletingPool.id));
+      setDeletingPool(null);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Failed to delete pool");
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <Layout
       title="My Pools"
@@ -121,17 +143,27 @@ export const ManagerDashboard: React.FC = () => {
           pools.map((pool) => (
             <div
               key={pool.id}
-              onClick={() => navigate(`/manager/pool/${pool.id}`)}
-              className="ui-surface p-5 rounded-2xl shadow-sm active:scale-95 transition-transform cursor-pointer flex justify-between items-center group"
+              className="ui-surface p-5 rounded-2xl shadow-sm transition-transform cursor-pointer flex justify-between items-center group"
             >
-              <div>
+              <div className="flex-1" onClick={() => navigate(`/manager/pool/${pool.id}`)}>
                 <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                   {pool.name}
                 </h3>
-                <p className="text-xs text-slate-400 mt-1">Created {new Date(pool.createdAt).toLocaleDateString()}</p>
               </div>
-              <div className="text-slate-300">
-                <ChevronRight className="w-6 h-6" />
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeletingPool(pool);
+                  }}
+                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                  title="Delete pool"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+                <div className="text-slate-300" onClick={() => navigate(`/manager/pool/${pool.id}`)}>
+                  <ChevronRight className="w-6 h-6" />
+                </div>
               </div>
             </div>
           ))}
@@ -192,6 +224,39 @@ export const ManagerDashboard: React.FC = () => {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {deletingPool && (
+        <div className="ui-modal-backdrop">
+          <div className="ui-modal-panel max-w-md animate-in slide-in-from-bottom-10 fade-in duration-200">
+            <div className="ui-modal-header">
+              <h2 className="ui-modal-title text-red-600 dark:text-red-400">Delete Pool</h2>
+              <button onClick={() => setDeletingPool(null)} className="ui-icon-button">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-slate-600 dark:text-slate-300 mb-4">
+              Are you sure you want to delete <span className="font-semibold">{deletingPool.name}</span>? This will
+              permanently remove all casuals, shifts, and data associated with this pool.
+            </p>
+
+            <div className="flex gap-3">
+              <Button type="button" variant="secondary" className="flex-1" onClick={() => setDeletingPool(null)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                className="flex-1"
+                isLoading={isDeleting}
+                onClick={handleDeletePool}
+              >
+                Delete Pool
+              </Button>
+            </div>
           </div>
         </div>
       )}
