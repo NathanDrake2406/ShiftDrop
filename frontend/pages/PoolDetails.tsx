@@ -9,7 +9,8 @@ import { ShiftCard } from "../components/ShiftCard";
 import { ShiftCardSkeleton } from "../components/ui/Skeleton";
 import { TeamTab } from "../components/TeamTab";
 import { AvailabilityEditor } from "../components/AvailabilityEditor";
-import { Plus, Trash2, RefreshCw, Calendar } from "lucide-react";
+import { Plus, Trash2, RefreshCw, Calendar, BarChart3, Users, CheckCircle, Clock } from "lucide-react";
+import { StatsCard } from "../components/ui/StatsCard";
 import { useAuth } from "../auth";
 import { useToast } from "../contexts/ToastContext";
 import { useDemo } from "../contexts/DemoContext";
@@ -20,6 +21,7 @@ import type {
   CasualResponse,
   PoolAdminResponse,
   AvailabilitySlot,
+  PoolStatsResponse,
 } from "../types/api";
 import { ApiError } from "../types/api";
 
@@ -33,6 +35,7 @@ export const PoolDetails: React.FC = () => {
   const [pool, setPool] = useState<PoolDetailResponse | null>(null);
   const [shifts, setShifts] = useState<ShiftDetailResponse[]>([]);
   const [admins, setAdmins] = useState<PoolAdminResponse[]>([]);
+  const [stats, setStats] = useState<PoolStatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"shifts" | "casuals" | "team">("shifts");
@@ -152,6 +155,7 @@ export const PoolDetails: React.FC = () => {
         return;
       }
 
+      // Core data - failure means page can't load
       const [poolData, shiftsData, adminsData] = await Promise.all([
         managerApi.getPool(id, token),
         managerApi.getPoolShifts(id, token),
@@ -161,6 +165,14 @@ export const PoolDetails: React.FC = () => {
       setPool(poolData);
       setShifts(shiftsData);
       setAdmins(adminsData);
+
+      // Stats are supplementary - don't fail the page if stats fail
+      try {
+        const statsData = await managerApi.getPoolStats(id, token);
+        setStats(statsData);
+      } catch {
+        setStats(null);
+      }
       setError(null);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -469,6 +481,26 @@ export const PoolDetails: React.FC = () => {
 
   return (
     <Layout title={pool.name} showBack onBack={() => navigate("/manager")}>
+      {/* Stats Grid */}
+      {stats && (
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <StatsCard
+            label="Fill Rate"
+            value={`${stats.fillRatePercent}%`}
+            icon={<BarChart3 className="w-4 h-4" />}
+            trend={stats.fillRatePercent >= 70 ? "up" : stats.fillRatePercent >= 40 ? "neutral" : "down"}
+          />
+          <StatsCard
+            label="Active Casuals"
+            value={stats.activeCasuals}
+            icon={<Users className="w-4 h-4" />}
+            subtext={`of ${stats.totalCasuals}`}
+          />
+          <StatsCard label="Shifts Filled" value={stats.shiftsFilled} icon={<CheckCircle className="w-4 h-4" />} />
+          <StatsCard label="Open Shifts" value={stats.shiftsOpen} icon={<Clock className="w-4 h-4" />} />
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-4">
         <button
