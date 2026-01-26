@@ -71,12 +71,9 @@ export const LandingPage: React.FC = () => {
           <p className="mt-6 text-lg sm:text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto">
             Post a shift, your team gets an SMS, first to respond claims it. Simple, fair, and no one gets left on read.
           </p>
-          <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="mt-10 flex justify-center">
             <Button size="lg" onClick={handleTryDemo} className="text-lg px-8 py-6">
               Try Demo
-            </Button>
-            <Button size="lg" variant="secondary" onClick={handleManagerLogin} className="text-lg px-8 py-6">
-              Sign in as Manager
             </Button>
           </div>
         </div>
