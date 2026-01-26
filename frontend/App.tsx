@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Login } from "./pages/Login";
+import { LandingPage } from "./pages/LandingPage";
 import { ManagerDashboard } from "./pages/ManagerDashboard";
 import { PoolDetails } from "./pages/PoolDetails";
 import { AcceptAdminInvitePage } from "./pages/AcceptAdminInvitePage";
@@ -28,6 +29,7 @@ function App() {
           )
         }
       />
+      <Route path="/landing" element={<LandingPage />} />
 
       {/* Manager Routes - Protected by Auth0 */}
       <Route
