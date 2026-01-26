@@ -29,15 +29,27 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = "max-w-md",
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
-  // Focus trap - focus first focusable element on open
+  // Focus trap - focus autoFocus element or first input on open
   useEffect(() => {
     if (!isOpen || !panelRef.current) return;
+
+    // Prefer element with autoFocus, then first input, then first focusable
+    const autoFocusElement = panelRef.current.querySelector<HTMLElement>("[autofocus]");
+    if (autoFocusElement) {
+      autoFocusElement.focus();
+      return;
+    }
+
+    const firstInput = panelRef.current.querySelector<HTMLElement>("input, select, textarea");
+    if (firstInput) {
+      firstInput.focus();
+      return;
+    }
 
     const focusableElements = panelRef.current.querySelectorAll<HTMLElement>(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
     );
-    const firstElement = focusableElements[0];
-    firstElement?.focus();
+    focusableElements[0]?.focus();
   }, [isOpen]);
 
   if (!isOpen) return null;
