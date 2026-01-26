@@ -14,6 +14,7 @@ import type {
   PoolResponse,
   PoolStatsResponse,
   ResendInviteResponse,
+  ResendShiftNotificationResponse,
   SetAvailabilityRequest,
   ShiftDetailResponse,
   ShiftResponse,
@@ -75,6 +76,15 @@ export const releaseCasual = (poolId: string, shiftId: string, casualId: string,
   getDemoMode()
     ? demoManagerApi.releaseCasual(poolId, shiftId, casualId)
     : apiRequest<void>(`/pools/${poolId}/shifts/${shiftId}/release/${casualId}`, { method: "POST", token });
+
+/** Resend SMS notifications for a shift to all eligible casuals */
+export const resendShiftNotification = (poolId: string, shiftId: string, token: string) =>
+  getDemoMode()
+    ? demoManagerApi.resendShiftNotification(poolId, shiftId)
+    : apiRequest<ResendShiftNotificationResponse>(`/pools/${poolId}/shifts/${shiftId}/resend`, {
+        method: "POST",
+        token,
+      });
 
 export const resendInvite = (poolId: string, casualId: string, token: string) =>
   getDemoMode()

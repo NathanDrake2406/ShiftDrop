@@ -1,5 +1,5 @@
 import { Button } from "./ui/Button";
-import { Clock, Users, Calendar, X } from "lucide-react";
+import { Clock, Users, Calendar, X, RefreshCw } from "lucide-react";
 import { formatDateDMY } from "../utils/date";
 import type { ShiftResponse, ShiftDetailResponse, ClaimStatusValue } from "../types/api";
 
@@ -11,8 +11,11 @@ interface ShiftCardProps {
   onBail?: (shiftId: string) => void;
   /** Release a casual from the shift by casualId */
   onReleaseCasual?: (shiftId: string, casualId: string) => void;
+  /** Resend SMS notifications for this shift (manager only) */
+  onResendNotification?: (shiftId: string) => void;
   userType: "manager" | "casual";
   isLoading?: boolean;
+  isResending?: boolean;
   userClaimStatus?: ClaimStatusValue;
 }
 
@@ -22,8 +25,10 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({
   onCancel,
   onBail,
   onReleaseCasual,
+  onResendNotification,
   userType,
   isLoading,
+  isResending,
   userClaimStatus,
 }) => {
   const start = new Date(shift.startsAt);
@@ -104,9 +109,22 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({
           )}
 
           {userType === "manager" && !isCancelled && (
-            <Button size="sm" variant="danger" onClick={() => onCancel?.(shift.id)} isLoading={isLoading}>
-              Cancel
-            </Button>
+            <>
+              {!isFilled && onResendNotification && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => onResendNotification(shift.id)}
+                  isLoading={isResending}
+                >
+                  <RefreshCw className="w-3 h-3 mr-1" />
+                  Resend
+                </Button>
+              )}
+              <Button size="sm" variant="danger" onClick={() => onCancel?.(shift.id)} isLoading={isLoading}>
+                Cancel
+              </Button>
+            </>
           )}
         </div>
       </div>

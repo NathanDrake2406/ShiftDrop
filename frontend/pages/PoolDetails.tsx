@@ -137,6 +137,7 @@ export const PoolDetails: React.FC = () => {
   }>(null);
   const [isConfirmingAction, setIsConfirmingAction] = useState(false);
   const [resendingInvite, setResendingInvite] = useState<string | null>(null);
+  const [resendingShiftNotification, setResendingShiftNotification] = useState<string | null>(null);
 
   const [shiftForm, setShiftForm] = useState(buildDefaultShiftForm());
 
@@ -385,6 +386,25 @@ export const PoolDetails: React.FC = () => {
     }
   };
 
+  const handleResendShiftNotification = async (shiftId: string) => {
+    if (!id) return;
+    setResendingShiftNotification(shiftId);
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      const result = await managerApi.resendShiftNotification(id, shiftId, token);
+      showToast(result.message, "success");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        showToast(err.message, "error");
+      } else {
+        showToast("Failed to resend notifications", "error");
+      }
+    } finally {
+      setResendingShiftNotification(null);
+    }
+  };
+
   const confirmActionCopy = (() => {
     if (!confirmAction) return null;
     switch (confirmAction.type) {
@@ -538,6 +558,8 @@ export const PoolDetails: React.FC = () => {
                 userType="manager"
                 onCancel={handleCancelShift}
                 onReleaseCasual={handleReleaseCasual}
+                onResendNotification={handleResendShiftNotification}
+                isResending={resendingShiftNotification === shift.id}
               />
             ))}
         </div>

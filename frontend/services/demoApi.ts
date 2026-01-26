@@ -18,6 +18,7 @@ import type {
   OptOutResponse,
   ClaimByTokenResponse,
   ResendInviteResponse,
+  ResendShiftNotificationResponse,
 } from "../types/api";
 import type { Pool, Casual, Shift, ShiftClaim } from "../types";
 import { ClaimStatus, InviteStatus, ShiftStatus } from "../types";
@@ -148,6 +149,35 @@ export const demoManagerApi = {
     return {
       message: `Invite resent to ${casual.name}`,
       casual: toCasualResponse(casual),
+    };
+  },
+
+  resendShiftNotification: async (poolId: string, shiftId: string): Promise<ResendShiftNotificationResponse> => {
+    const pool = await getPoolOrThrow(poolId);
+    const shift = pool.shifts.find((s) => s.id === shiftId);
+    if (!shift) {
+      throw new ApiError(404, "Shift not found");
+    }
+    if (shift.status === ShiftStatus.Cancelled) {
+      throw new ApiError(400, "Cannot resend notifications for cancelled shifts");
+    }
+    if (shift.status === ShiftStatus.Filled) {
+      throw new ApiError(400, "Shift is already filled");
+    }
+    // In demo mode, simulate notifying active casuals who haven't claimed
+    const claimedCasualIds = new Set(
+      shift.claims.filter((c) => c.status === ClaimStatus.Claimed).map((c) => c.casualId),
+    );
+    const eligibleCasuals = pool.casuals.filter(
+      (c) => c.inviteStatus === InviteStatus.Accepted && !claimedCasualIds.has(c.id),
+    );
+    const notifiedCount = eligibleCasuals.length;
+    return {
+      notifiedCount,
+      message:
+        notifiedCount === 0
+          ? "No casuals to notify"
+          : `Notification sent to ${notifiedCount} casual${notifiedCount === 1 ? "" : "s"}`,
     };
   },
 

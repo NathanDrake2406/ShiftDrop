@@ -7,6 +7,7 @@ using ShiftDrop.Features.Shifts.GetShifts;
 using ShiftDrop.Features.Shifts.PostShift;
 using ShiftDrop.Features.Shifts.ReleaseCasual;
 using ShiftDrop.Features.Shifts.ReleaseShift;
+using ShiftDrop.Features.Shifts.ResendShiftNotification;
 
 namespace ShiftDrop.Features.Shifts;
 
@@ -18,6 +19,7 @@ public static class ShiftsExtensions
         group.MapGetShifts();
         group.MapReleaseCasual();
         group.MapCancelShift();
+        group.MapResendShiftNotification();
     }
 
     public static void MapCasualShiftFeatures(this RouteGroupBuilder group)

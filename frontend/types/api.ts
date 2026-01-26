@@ -173,6 +173,12 @@ export interface ResendInviteResponse {
   casual: CasualResponse;
 }
 
+/** POST /pools/:poolId/shifts/:shiftId/resend */
+export interface ResendShiftNotificationResponse {
+  notifiedCount: number;
+  message: string;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Pool Admin (2IC) types
 // ─────────────────────────────────────────────────────────────────────────────
