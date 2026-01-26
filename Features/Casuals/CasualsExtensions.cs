@@ -1,6 +1,7 @@
 using ShiftDrop.Features.Casuals.AddCasual;
 using ShiftDrop.Features.Casuals.GetAvailability;
 using ShiftDrop.Features.Casuals.OptOut;
+using ShiftDrop.Features.Casuals.PushSubscribe;
 using ShiftDrop.Features.Casuals.RemoveCasual;
 using ShiftDrop.Features.Casuals.ResendInvite;
 using ShiftDrop.Features.Casuals.SetAvailability;
@@ -31,5 +32,6 @@ public static class CasualsExtensions
     {
         group.MapVerifyInvite();
         group.MapOptOut();
+        group.MapPushSubscribe();
     }
 }
