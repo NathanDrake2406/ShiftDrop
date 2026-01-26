@@ -23,7 +23,7 @@ builder.Services.AddCors(options =>
         ?? Array.Empty<string>();
 
     options.AddPolicy("ProdCors", policy =>
-        policy.WithOrigins(allowedOrigins.Concat(new[] { "https://frontend-five-lovat-27.vercel.app", "https://shiftdrop-app.vercel.app" }).ToArray())
+        policy.WithOrigins(allowedOrigins.Concat(new[] { "https://shift-drop.vercel.app", "https://frontend-five-lovat-27.vercel.app" }).ToArray())
             .AllowAnyHeader()
             .AllowAnyMethod());
 });
