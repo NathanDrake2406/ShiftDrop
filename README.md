@@ -1,10 +1,10 @@
 # ShiftDrop
 
-**Kill the group chat. Fill shifts in seconds.**
+**Fill last-minute shifts without the chaos.**
 
-You know the drill. Someone calls in sick. Now you're texting 15 people, tracking who replied, who's available, who left you on read. By the time you've filled the shift, you've burned 45 minutes and your sanity.
+Someone calls in sick. Now you're texting everyone, tracking who replied, who's available, who left you on read. It takes forever.
 
-ShiftDrop fixes this. Post a shift → SMS goes to your whole casual pool → first to claim wins. Done.
+ShiftDrop makes it simple: post a shift, your team gets an SMS, first to respond claims it. Fair, transparent, and no one gets forgotten.
 
 **Live:** [shiftdrop-app.vercel.app](https://shiftdrop-app.vercel.app)
 
@@ -12,12 +12,11 @@ ShiftDrop fixes this. Post a shift → SMS goes to your whole casual pool → fi
 
 ## How it works
 
-1. **Manager posts a shift** — "Tomorrow 9am-2pm, need 2 people"
-2. **SMS blasts out** — Every active casual gets a link
-3. **Casuals claim spots** — First-come, first-served. Fair and fast.
-4. **Shift fills itself** — You get on with your life
+1. **Post a shift** — Pick a time, set how many people you need
+2. **Team gets notified** — Everyone on your roster gets an SMS with a link
+3. **Shift gets filled** — First to respond gets the spot
 
-No app downloads. No accounts for casuals. Just SMS links that work.
+No app downloads for staff. Just SMS links that work.
 
 ---
 
@@ -64,7 +63,7 @@ flowchart LR
 
 ### Why the outbox pattern?
 
-Direct SMS after `SaveChanges()` = dual-write bug. If Twilio fails after your DB commits, you're screwed. The outbox queues SMS in the same transaction, then a background processor sends them. Reliable delivery, no tears.
+Sending SMS directly after `SaveChanges()` can cause issues — if Twilio fails after your DB commits, data gets out of sync. The outbox queues messages in the same transaction, then a background processor sends them. Reliable delivery, nothing gets lost.
 
 ### Domain model
 
