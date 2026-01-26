@@ -20,8 +20,12 @@ public static class PushSubscribeEndpoint
         TimeProvider timeProvider,
         CancellationToken ct)
     {
+        // Note: Cannot use c.IsActive (computed property) in LINQ-to-Entities.
+        // Inline the expression for database translation.
         var casual = await db.Casuals
-            .FirstOrDefaultAsync(c => c.PhoneNumber == phoneNumber && c.IsActive, ct);
+            .FirstOrDefaultAsync(c => c.PhoneNumber == phoneNumber
+                                      && c.InviteStatus == InviteStatus.Accepted
+                                      && c.OptedOutAt == null, ct);
 
         if (casual == null)
             return Results.NotFound(new { error = "Casual not found or not active" });

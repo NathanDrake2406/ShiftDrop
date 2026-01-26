@@ -143,6 +143,7 @@ public abstract class IntegrationTestBase : IClassFixture<ShiftDropWebApplicatio
             db.ShiftNotifications.RemoveRange(db.ShiftNotifications);
             db.ShiftClaims.RemoveRange(db.ShiftClaims);
             db.Shifts.RemoveRange(db.Shifts);
+            db.PushSubscriptions.RemoveRange(db.PushSubscriptions);
             db.Casuals.RemoveRange(db.Casuals);
             db.Pools.RemoveRange(db.Pools);
             await db.SaveChangesAsync();
