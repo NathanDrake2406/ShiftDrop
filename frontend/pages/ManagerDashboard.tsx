@@ -212,6 +212,7 @@ export const ManagerDashboard: React.FC = () => {
                     setPoolName(e.target.value);
                     if (poolError) setPoolError(null);
                   }}
+                  autoFocus
                 />
                 {poolError && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{poolError}</p>}
               </div>

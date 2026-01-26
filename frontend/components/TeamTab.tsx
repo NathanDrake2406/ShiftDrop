@@ -126,7 +126,7 @@ export function TeamTab({ ownerLabel, admins, onInviteAdmin, onRemoveAdmin, isLo
               className="ui-input-field w-full"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Sarah Chen"
+              autoFocus
             />
           </div>
           <div>
@@ -136,7 +136,6 @@ export function TeamTab({ ownerLabel, admins, onInviteAdmin, onRemoveAdmin, isLo
               className="ui-input-field w-full"
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="+61400123456"
             />
           </div>
           {error && <p className="text-red-500 text-sm">{error}</p>}

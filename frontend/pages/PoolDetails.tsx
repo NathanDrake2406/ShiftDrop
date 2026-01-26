@@ -729,6 +729,7 @@ export const PoolDetails: React.FC = () => {
                   setCasualErrors((prev) => ({ ...prev, name: undefined }));
                 }
               }}
+              autoFocus
             />
             {casualErrors.name && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{casualErrors.name}</p>}
           </div>
