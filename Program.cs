@@ -41,6 +41,10 @@ else
 
 builder.Services.AddHostedService<OutboxProcessor>();
 
+// Push notification service
+builder.Services.Configure<WebPushOptions>(builder.Configuration.GetSection("WebPush"));
+builder.Services.AddScoped<IPushNotificationService, WebPushNotificationService>();
+
 builder
     .Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
