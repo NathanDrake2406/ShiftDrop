@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<PoolAdmin> PoolAdmins => Set<PoolAdmin>();
     public DbSet<CasualAvailability> CasualAvailability => Set<CasualAvailability>();
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -183,6 +184,22 @@ public class AppDbContext : DbContext
                 .WithMany(c => c.Availability)
                 .HasForeignKey(ca => ca.CasualId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PushSubscription>(entity =>
+        {
+            entity.HasKey(ps => ps.Id);
+            entity.Property(ps => ps.Id).ValueGeneratedNever(); // Domain generates IDs
+            entity.Property(ps => ps.Endpoint).IsRequired().HasMaxLength(2048);
+            entity.Property(ps => ps.P256dh).IsRequired().HasMaxLength(512);
+            entity.Property(ps => ps.Auth).IsRequired().HasMaxLength(256);
+
+            entity.HasOne(ps => ps.Casual)
+                .WithMany()
+                .HasForeignKey(ps => ps.CasualId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(ps => new { ps.CasualId, ps.Endpoint }).IsUnique();
         });
     }
 }
