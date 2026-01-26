@@ -232,6 +232,7 @@ export const demoCasualApi = {
       message: "Shift claimed (demo).",
       shift: toShiftResponse(claimed),
       casualName: signedInCasual.name,
+      phoneNumber: signedInCasual.phoneNumber,
     };
   },
 };

@@ -160,6 +160,7 @@ export interface ClaimByTokenResponse {
   message: string;
   shift: ShiftResponse;
   casualName: string;
+  phoneNumber: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

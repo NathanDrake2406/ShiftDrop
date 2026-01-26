@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import { PushToggle } from "../components/PushToggle";
 import { Layout } from "../components/ui/Layout";
 import * as casualApi from "../services/casualApi";
 import { ApiError } from "../types/api";
@@ -97,9 +98,10 @@ export const ClaimByTokenPage: React.FC = () => {
                     <p className="text-lg font-bold text-slate-800 dark:text-white">{dateStr}</p>
                     <p className="text-slate-600 dark:text-slate-300">{timeStr}</p>
                   </div>
-                  <p className="text-sm text-slate-400 dark:text-slate-500">
+                  <p className="text-sm text-slate-400 dark:text-slate-500 mb-4">
                     You can close this page now. We'll send a reminder before your shift.
                   </p>
+                  <PushToggle phoneNumber={state.data.phoneNumber} />
                 </>
               );
             })()}
