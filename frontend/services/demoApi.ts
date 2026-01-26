@@ -3,6 +3,7 @@ import { ApiError } from "../types/api";
 import type {
   PoolResponse,
   PoolDetailResponse,
+  PoolStatsResponse,
   ShiftDetailResponse,
   ShiftResponse,
   CasualResponse,
@@ -147,6 +148,37 @@ export const demoManagerApi = {
     return {
       message: `Invite resent to ${casual.name}`,
       casual: toCasualResponse(casual),
+    };
+  },
+
+  getPoolStats: async (poolId: string): Promise<PoolStatsResponse> => {
+    const pool = await getPoolOrThrow(poolId);
+
+    const totalShiftsPosted = pool.shifts.length;
+    const shiftsFilled = pool.shifts.filter((s) => s.status === ShiftStatus.Filled).length;
+    const shiftsCancelled = pool.shifts.filter((s) => s.status === ShiftStatus.Cancelled).length;
+    const shiftsOpen = pool.shifts.filter((s) => s.status === ShiftStatus.Open).length;
+
+    const totalSpotsClaimed = pool.shifts.reduce(
+      (sum, s) => sum + s.claims.filter((c) => c.status === ClaimStatus.Claimed).length,
+      0,
+    );
+
+    const nonCancelledShifts = totalShiftsPosted - shiftsCancelled;
+    const fillRatePercent = nonCancelledShifts > 0 ? Math.round((shiftsFilled / nonCancelledShifts) * 1000) / 10 : 0;
+
+    const activeCasuals = pool.casuals.filter((c) => c.inviteStatus === InviteStatus.Accepted).length;
+    const totalCasuals = pool.casuals.length;
+
+    return {
+      totalShiftsPosted,
+      shiftsFilled,
+      shiftsCancelled,
+      shiftsOpen,
+      totalSpotsClaimed,
+      fillRatePercent,
+      activeCasuals,
+      totalCasuals,
     };
   },
 };
