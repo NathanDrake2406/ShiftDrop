@@ -14,21 +14,39 @@ interface TeamTabProps {
 
 export function TeamTab({ ownerLabel, admins, onInviteAdmin, onRemoveAdmin, isLoading, isDemoMode }: TeamTabProps) {
   const [isInviting, setIsInviting] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [name, setName] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({ name: "", phone: "" });
+  const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
   const [isSaving, setIsSaving] = useState(false);
 
+  const closeInvite = () => {
+    setIsInviting(false);
+    setForm({ name: "", phone: "" });
+    setErrors({});
+  };
+
   const handleInvite = async () => {
-    setError(null);
+    const newErrors: { name?: string; phone?: string } = {};
+    const trimmedName = form.name.trim();
+    const trimmedPhone = form.phone.trim();
+
+    if (!trimmedName || trimmedName.length < 2) {
+      newErrors.name = "Name is required (at least 2 characters)";
+    }
+    if (!trimmedPhone) {
+      newErrors.phone = "Phone number is required";
+    }
+
+    if (newErrors.name || newErrors.phone) {
+      setErrors(newErrors);
+      return;
+    }
+
     setIsSaving(true);
     try {
-      await onInviteAdmin(phoneNumber.trim(), name.trim());
-      setIsInviting(false);
-      setPhoneNumber("");
-      setName("");
+      await onInviteAdmin(trimmedPhone, trimmedName);
+      closeInvite();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to invite admin");
+      setErrors({ phone: err instanceof Error ? err.message : "Failed to invite admin" });
     } finally {
       setIsSaving(false);
     }
@@ -117,37 +135,54 @@ export function TeamTab({ ownerLabel, admins, onInviteAdmin, onRemoveAdmin, isLo
         )}
       </div>
 
-      <Modal isOpen={isInviting} onClose={() => setIsInviting(false)} title="Invite Admin">
-        <div className="space-y-4">
+      <Modal isOpen={isInviting} onClose={closeInvite} title="Add Admin">
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleInvite();
+          }}
+        >
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Name</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Admin Name</label>
             <input
               type="text"
-              className="ui-input-field w-full"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              className={`ui-input ${errors.name ? "ui-input-error" : ""}`}
+              value={form.name}
+              onChange={(e) => {
+                setForm({ ...form, name: e.target.value });
+                if (errors.name) {
+                  setErrors((prev) => ({ ...prev, name: undefined }));
+                }
+              }}
               autoFocus
             />
+            {errors.name && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.name}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Phone</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Phone Number</label>
             <input
               type="tel"
-              className="ui-input-field w-full"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
+              className={`ui-input ${errors.phone ? "ui-input-error" : ""}`}
+              value={form.phone}
+              onChange={(e) => {
+                setForm({ ...form, phone: e.target.value });
+                if (errors.phone) {
+                  setErrors((prev) => ({ ...prev, phone: undefined }));
+                }
+              }}
             />
+            {errors.phone && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.phone}</p>}
           </div>
-          {error && <p className="text-red-500 text-sm">{error}</p>}
-          <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => setIsInviting(false)} className="flex-1">
+          <div className="flex gap-3">
+            <Button type="button" variant="secondary" className="flex-1" onClick={closeInvite}>
               Cancel
             </Button>
-            <Button onClick={handleInvite} disabled={isSaving || !phoneNumber || !name} className="flex-1">
-              {isSaving ? "Sending..." : "Send Invite"}
+            <Button type="submit" className="flex-1" isLoading={isSaving}>
+              Add Admin
             </Button>
           </div>
-        </div>
+        </form>
       </Modal>
     </div>
   );
