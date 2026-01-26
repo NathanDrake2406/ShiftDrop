@@ -6,7 +6,7 @@ import type { PoolAdminResponse } from "../types/api";
 interface TeamTabProps {
   ownerLabel: string;
   admins: PoolAdminResponse[];
-  onInviteAdmin: (email: string, name: string) => Promise<void>;
+  onInviteAdmin: (phoneNumber: string, name: string) => Promise<void>;
   onRemoveAdmin: (adminId: string) => Promise<void>;
   isLoading?: boolean;
   isDemoMode?: boolean;
@@ -14,7 +14,7 @@ interface TeamTabProps {
 
 export function TeamTab({ ownerLabel, admins, onInviteAdmin, onRemoveAdmin, isLoading, isDemoMode }: TeamTabProps) {
   const [isInviting, setIsInviting] = useState(false);
-  const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -23,9 +23,9 @@ export function TeamTab({ ownerLabel, admins, onInviteAdmin, onRemoveAdmin, isLo
     setError(null);
     setIsSaving(true);
     try {
-      await onInviteAdmin(email.trim(), name.trim());
+      await onInviteAdmin(phoneNumber.trim(), name.trim());
       setIsInviting(false);
-      setEmail("");
+      setPhoneNumber("");
       setName("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to invite admin");
@@ -82,7 +82,7 @@ export function TeamTab({ ownerLabel, admins, onInviteAdmin, onRemoveAdmin, isLo
           >
             <div>
               <p className="font-medium text-slate-800 dark:text-slate-200">{admin.name}</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">{admin.email}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{admin.phoneNumber}</p>
             </div>
             <div className="flex items-center gap-2">
               <span
@@ -130,13 +130,13 @@ export function TeamTab({ ownerLabel, admins, onInviteAdmin, onRemoveAdmin, isLo
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Phone</label>
             <input
-              type="email"
+              type="tel"
               className="ui-input-field w-full"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="sarah@example.com"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              placeholder="+61400123456"
             />
           </div>
           {error && <p className="text-red-500 text-sm">{error}</p>}
@@ -144,7 +144,7 @@ export function TeamTab({ ownerLabel, admins, onInviteAdmin, onRemoveAdmin, isLo
             <Button variant="secondary" onClick={() => setIsInviting(false)} className="flex-1">
               Cancel
             </Button>
-            <Button onClick={handleInvite} disabled={isSaving || !email || !name} className="flex-1">
+            <Button onClick={handleInvite} disabled={isSaving || !phoneNumber || !name} className="flex-1">
               {isSaving ? "Sending..." : "Send Invite"}
             </Button>
           </div>

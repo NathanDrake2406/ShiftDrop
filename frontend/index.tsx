@@ -5,6 +5,8 @@ import App from "./App";
 import { Auth0Provider } from "./auth";
 import { ToastProvider } from "./contexts/ToastContext";
 import { ToastContainer } from "./components/ui/Toast";
+import { DemoProvider } from "./contexts/DemoContext";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
@@ -16,10 +18,14 @@ root.render(
   <React.StrictMode>
     <BrowserRouter>
       <Auth0Provider>
-        <ToastProvider>
-          <App />
-          <ToastContainer />
-        </ToastProvider>
+        <DemoProvider>
+          <ToastProvider>
+            <ErrorBoundary>
+              <App />
+              <ToastContainer />
+            </ErrorBoundary>
+          </ToastProvider>
+        </DemoProvider>
       </Auth0Provider>
     </BrowserRouter>
   </React.StrictMode>,

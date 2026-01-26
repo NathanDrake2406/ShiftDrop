@@ -146,13 +146,13 @@ public class AppDbContext : DbContext
             entity.HasKey(pa => pa.Id);
             entity.Property(pa => pa.Id).ValueGeneratedNever(); // Domain generates IDs
 
-            entity.Property(pa => pa.Email).HasMaxLength(200).IsRequired();
+            entity.Property(pa => pa.PhoneNumber).HasMaxLength(50).IsRequired();
             entity.Property(pa => pa.Name).HasMaxLength(200).IsRequired();
             entity.Property(pa => pa.Auth0Id).HasMaxLength(200);
             entity.Property(pa => pa.InviteToken).HasMaxLength(32);
 
-            // Unique index on pool + email (one admin per email per pool)
-            entity.HasIndex(pa => new { pa.PoolId, pa.Email }).IsUnique();
+            // Unique index on pool + phone number (one admin per phone per pool)
+            entity.HasIndex(pa => new { pa.PoolId, pa.PhoneNumber }).IsUnique();
 
             // Index for token lookup (for accepting invites)
             entity.HasIndex(pa => pa.InviteToken)

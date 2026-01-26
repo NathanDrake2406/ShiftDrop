@@ -130,6 +130,14 @@ public record InviteSmsPayload(
     string VerifyUrl
 );
 
+public record AdminInviteSmsPayload(
+    Guid PoolAdminId,
+    string PhoneNumber,
+    string AdminName,
+    string PoolName,
+    string AcceptUrl
+);
+
 public record ClaimConfirmationPayload(
     Guid ShiftClaimId,
     string PhoneNumber,

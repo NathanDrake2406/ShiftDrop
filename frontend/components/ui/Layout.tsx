@@ -12,8 +12,13 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children, title, showBack, onBack, actions }) => {
   const [isDark, setIsDark] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('theme') === 'dark' || 
-        (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      try {
+        const storedTheme = window.localStorage.getItem('theme');
+        return storedTheme === 'dark' ||
+          (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      } catch {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
     }
     return false;
   });
@@ -22,10 +27,18 @@ export const Layout: React.FC<LayoutProps> = ({ children, title, showBack, onBac
     const root = window.document.documentElement;
     if (isDark) {
       root.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
+      try {
+        window.localStorage.setItem('theme', 'dark');
+      } catch {
+        // Ignore storage errors (e.g., private browsing)
+      }
     } else {
       root.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+      try {
+        window.localStorage.setItem('theme', 'light');
+      } catch {
+        // Ignore storage errors (e.g., private browsing)
+      }
     }
   }, [isDark]);
 

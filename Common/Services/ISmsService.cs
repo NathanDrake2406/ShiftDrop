@@ -11,5 +11,6 @@ public interface ISmsService
     // Outbox-based methods - process individual messages
     Task SendShiftBroadcast(ShiftBroadcastPayload payload, CancellationToken ct);
     Task SendInviteSms(InviteSmsPayload payload, CancellationToken ct);
+    Task SendAdminInviteSms(AdminInviteSmsPayload payload, CancellationToken ct);
     Task SendClaimConfirmation(ClaimConfirmationPayload payload, CancellationToken ct);
 }

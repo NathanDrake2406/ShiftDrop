@@ -163,7 +163,7 @@ export interface ResendInviteResponse {
 /** Pool admin (2IC) response */
 export interface PoolAdminResponse {
   id: string;
-  email: string;
+  phoneNumber: string;
   name: string;
   invitedAt: string; // ISO 8601
   acceptedAt: string | null; // ISO 8601 or null if pending
@@ -172,7 +172,7 @@ export interface PoolAdminResponse {
 
 /** POST /pools/:id/admins */
 export interface InviteAdminRequest {
-  email: string;
+  phoneNumber: string;
   name: string;
 }
 

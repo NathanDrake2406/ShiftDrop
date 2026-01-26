@@ -129,6 +129,12 @@ public class OutboxProcessor : BackgroundService
                     await smsService.SendInviteSms(invite, ct);
                 break;
 
+            case nameof(AdminInviteSmsPayload):
+                var adminInvite = message.GetPayload<AdminInviteSmsPayload>();
+                if (adminInvite != null)
+                    await smsService.SendAdminInviteSms(adminInvite, ct);
+                break;
+
             case nameof(ClaimConfirmationPayload):
                 var confirmation = message.GetPayload<ClaimConfirmationPayload>();
                 if (confirmation != null)

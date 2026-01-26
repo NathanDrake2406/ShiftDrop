@@ -61,6 +61,12 @@ public class TwilioSmsService : ISmsService
         await SendSms(payload.PhoneNumber, body, "InviteSms", ct);
     }
 
+    public async Task SendAdminInviteSms(AdminInviteSmsPayload payload, CancellationToken ct)
+    {
+        var body = $"Hi {payload.AdminName}! You've been invited to admin {payload.PoolName}. Accept: {payload.AcceptUrl}";
+        await SendSms(payload.PhoneNumber, body, "AdminInviteSms", ct);
+    }
+
     public async Task SendClaimConfirmation(ClaimConfirmationPayload payload, CancellationToken ct)
     {
         var body = $"Confirmed! {payload.ShiftDescription}";

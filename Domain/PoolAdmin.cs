@@ -9,7 +9,7 @@ public class PoolAdmin
     public Guid Id { get; private set; }
     public Guid PoolId { get; private set; }
     public Pool Pool { get; private set; } = null!;
-    public string Email { get; private set; } = string.Empty;
+    public string PhoneNumber { get; private set; } = string.Empty;
     public string Name { get; private set; } = string.Empty;
 
     // Auth fields - null until admin accepts their invite
@@ -35,29 +35,26 @@ public class PoolAdmin
     private PoolAdmin() { }
 
     internal static Result<PoolAdmin> Create(
-        string email,
+        string phoneNumber,
         string name,
         Pool pool,
         TimeProvider timeProvider)
     {
-        if (string.IsNullOrWhiteSpace(email))
-            return Result<PoolAdmin>.Failure("Email cannot be empty");
-
-        if (!email.Contains('@'))
-            return Result<PoolAdmin>.Failure("Email must be a valid email address");
+        if (string.IsNullOrWhiteSpace(phoneNumber))
+            return Result<PoolAdmin>.Failure("Phone number is required for SMS invites");
 
         if (string.IsNullOrWhiteSpace(name))
             return Result<PoolAdmin>.Failure("Name cannot be empty");
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
-        var normalizedEmail = email.Trim().ToLowerInvariant();
+        var normalizedPhone = NormalizePhoneNumber(phoneNumber.Trim());
 
         var poolAdmin = new PoolAdmin
         {
             Id = Guid.NewGuid(),
             PoolId = pool.Id,
             Pool = pool,
-            Email = normalizedEmail,
+            PhoneNumber = normalizedPhone,
             Name = name.Trim(),
             InviteToken = Guid.NewGuid().ToString("N"),
             InvitedAt = now,
@@ -102,5 +99,25 @@ public class PoolAdmin
         InviteExpiresAt = timeProvider.GetUtcNow().UtcDateTime.AddDays(7);
 
         return Result<PoolAdmin>.Success(this);
+    }
+
+    /// <summary>
+    /// Normalizes phone numbers to E.164 format for SMS delivery.
+    /// Handles Australian numbers: 0412345678 → +61412345678
+    /// </summary>
+    private static string NormalizePhoneNumber(string phone)
+    {
+        var digits = new string(phone.Where(c => char.IsDigit(c) || c == '+').ToArray());
+
+        if (digits.StartsWith('+'))
+            return digits;
+
+        if (digits.StartsWith("04") && digits.Length == 10)
+            return "+61" + digits[1..];
+
+        if (digits.StartsWith("61") && digits.Length == 11)
+            return "+" + digits;
+
+        return "+" + digits;
     }
 }

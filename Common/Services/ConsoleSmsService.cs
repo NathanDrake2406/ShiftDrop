@@ -33,6 +33,13 @@ public class ConsoleSmsService : ISmsService
         return Task.CompletedTask;
     }
 
+    public Task SendAdminInviteSms(AdminInviteSmsPayload payload, CancellationToken ct)
+    {
+        Console.WriteLine($"[SMS to {payload.PhoneNumber}] Hi {payload.AdminName}! You've been invited to admin {payload.PoolName}.");
+        Console.WriteLine($"  Accept invite: {payload.AcceptUrl}");
+        return Task.CompletedTask;
+    }
+
     public Task SendClaimConfirmation(ClaimConfirmationPayload payload, CancellationToken ct)
     {
         Console.WriteLine($"[SMS to {payload.PhoneNumber}] Confirmed! {payload.ShiftDescription}");

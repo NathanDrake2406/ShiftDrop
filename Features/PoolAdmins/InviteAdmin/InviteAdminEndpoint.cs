@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using ShiftDrop.Common.Responses;
+using ShiftDrop.Domain;
 
 namespace ShiftDrop.Features.PoolAdmins.InviteAdmin;
 
@@ -16,6 +17,7 @@ public static class InviteAdminEndpoint
         InviteAdminRequest request,
         AppDbContext db,
         TimeProvider timeProvider,
+        IConfiguration config,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
@@ -33,11 +35,21 @@ public static class InviteAdminEndpoint
         if (!pool.IsAuthorized(userId))
             return Results.Forbid();
 
-        var result = pool.InviteAdmin(request.Email, request.Name, timeProvider);
+        var result = pool.InviteAdmin(request.PhoneNumber, request.Name, timeProvider);
         if (result.IsFailure)
             return Results.BadRequest(new { error = result.Error });
 
         var admin = result.Value!;
+        var baseUrl = config["App:BaseUrl"] ?? "https://shiftdrop.local";
+
+        var payload = new AdminInviteSmsPayload(
+            admin.Id,
+            admin.PhoneNumber,
+            admin.Name,
+            pool.Name,
+            $"{baseUrl}/admin/accept/{admin.InviteToken}"
+        );
+        db.OutboxMessages.Add(OutboxMessage.Create(payload, timeProvider));
 
         await db.SaveChangesAsync(ct);
 
@@ -47,4 +59,4 @@ public static class InviteAdminEndpoint
     }
 }
 
-public record InviteAdminRequest(string Email, string Name);
+public record InviteAdminRequest(string PhoneNumber, string Name);

@@ -1,41 +1,27 @@
-import { useState } from "react";
-import { api } from "../services/mockApi";
-import type { Casual } from "../types";
+import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { Layout } from "../components/ui/Layout";
 import { useAuth } from "../auth";
-import { useToast } from "../contexts/ToastContext";
+import { useDemo } from "../contexts/DemoContext";
 
-interface LoginProps {
-  onCasualLogin: (casual: Casual) => void;
-}
-
-export const Login: React.FC<LoginProps> = ({ onCasualLogin }) => {
+export const Login: React.FC = () => {
   const { login, isAuthenticated, isLoading: authLoading } = useAuth();
-  const { showToast } = useToast();
-  const [phoneNumber, setPhoneNumber] = useState("555-0101"); // Default for demo
-  const [loading, setLoading] = useState(false);
-
-  const handleCasualLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const casual = await api.casual.login(phoneNumber);
-      if (casual) {
-        onCasualLogin(casual);
-      } else {
-        showToast("Phone number not found in any pool.", "error");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { demoMode, setDemoMode, demoManagerSignedIn, setDemoManagerSignedIn } = useDemo();
+  const navigate = useNavigate();
 
   const handleManagerLogin = () => {
+    if (demoMode) {
+      setDemoManagerSignedIn(true);
+      navigate("/manager");
+      return;
+    }
     login({
       appState: { returnTo: "/manager" },
     });
   };
+
+  const isManagerSignedIn = demoMode ? demoManagerSignedIn : isAuthenticated;
+  const managerLoading = demoMode ? false : authLoading;
 
   return (
     <Layout>
@@ -46,39 +32,6 @@ export const Login: React.FC<LoginProps> = ({ onCasualLogin }) => {
         </div>
 
         <div className="ui-surface p-6 rounded-2xl shadow-lg space-y-6">
-          {/* Casual Login Flow - Demo Mode */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-white">I'm a Casual Worker</h2>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 font-medium">
-                Demo
-              </span>
-            </div>
-            <form onSubmit={handleCasualLogin} className="space-y-3">
-              <input
-                type="tel"
-                placeholder="Phone Number (e.g. 555-0101)"
-                className="ui-input rounded-xl focus:bg-white dark:focus:bg-slate-600 transition-colors"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-              />
-              <Button
-                type="submit"
-                className="w-full bg-slate-900 hover:bg-black dark:bg-slate-700 dark:hover:bg-slate-600"
-                isLoading={loading}
-              >
-                Sign In with Phone
-              </Button>
-            </form>
-            <p className="text-xs text-center mt-3 text-slate-400 dark:text-slate-500">
-              Use <span className="font-mono">555-0101</span> for demo.
-              <br />
-              <span className="text-slate-300 dark:text-slate-600">In production, casuals access via SMS links.</span>
-            </p>
-          </div>
-
-          <div className="ui-divider"></div>
-
           {/* Manager Entry */}
           <div>
             <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-4">I'm a Manager</h2>
@@ -86,12 +39,46 @@ export const Login: React.FC<LoginProps> = ({ onCasualLogin }) => {
               variant="primary"
               className="w-full"
               onClick={handleManagerLogin}
-              isLoading={authLoading}
-              disabled={isAuthenticated}
+              isLoading={managerLoading}
+              disabled={isManagerSignedIn}
             >
-              {isAuthenticated ? "Already signed in" : "Sign In as Manager"}
+              {isManagerSignedIn ? "Already signed in" : "Sign In as Manager"}
             </Button>
           </div>
+
+          <div className="ui-divider"></div>
+
+          <button
+            type="button"
+            onClick={() => setDemoMode(!demoMode)}
+            className="w-full ui-surface-muted rounded-xl p-3 flex items-center justify-between text-left"
+            role="switch"
+            aria-checked={demoMode}
+          >
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Demo mode</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 font-medium">
+                  Demo
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Use seeded data and skip Auth0 to preview manager features.
+              </p>
+            </div>
+            <span
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                demoMode ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-600"
+              }`}
+              aria-hidden="true"
+            >
+              <span
+                className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all ${
+                  demoMode ? "right-1" : "left-1"
+                }`}
+              />
+            </span>
+          </button>
         </div>
       </div>
     </Layout>

@@ -5,12 +5,14 @@ import { PoolCardSkeleton } from "../components/ui/Skeleton";
 import { useNavigate } from "react-router-dom";
 import { Plus, X, ChevronRight } from "lucide-react";
 import { useAuth } from "../auth";
+import { useDemo } from "../contexts/DemoContext";
 import * as managerApi from "../services/managerApi";
 import type { PoolResponse } from "../types/api";
 import { ApiError } from "../types/api";
 
 export const ManagerDashboard: React.FC = () => {
   const { getAccessToken, logout, user } = useAuth();
+  const { demoMode, demoManagerSignedIn } = useDemo();
   const [pools, setPools] = useState<PoolResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +26,11 @@ export const ManagerDashboard: React.FC = () => {
     const fetchPools = async () => {
       try {
         const token = await getAccessToken();
-        if (!token) return;
+        if (!token) {
+          setError("Unable to authenticate. Please try logging in again.");
+          setLoading(false);
+          return;
+        }
         const data = await managerApi.getPools(token);
         setPools(data);
         setError(null);
@@ -84,8 +90,10 @@ export const ManagerDashboard: React.FC = () => {
       title="My Pools"
       actions={
         <div className="flex items-center gap-2">
-          {user?.name && (
-            <span className="text-sm text-slate-500 dark:text-slate-400 hidden sm:inline">{user.name}</span>
+          {(user?.name || (demoMode && demoManagerSignedIn)) && (
+            <span className="text-sm text-slate-500 dark:text-slate-400 hidden sm:inline">
+              {user?.name ?? "Demo Manager"}
+            </span>
           )}
           <Button size="sm" variant="ghost" onClick={logout}>
             Log Out

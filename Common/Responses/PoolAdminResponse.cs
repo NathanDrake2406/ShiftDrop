@@ -4,7 +4,7 @@ namespace ShiftDrop.Common.Responses;
 
 public record PoolAdminResponse(
     Guid Id,
-    string Email,
+    string PhoneNumber,
     string Name,
     DateTime InvitedAt,
     DateTime? AcceptedAt,
@@ -12,7 +12,7 @@ public record PoolAdminResponse(
 {
     public PoolAdminResponse(PoolAdmin admin) : this(
         admin.Id,
-        admin.Email,
+        admin.PhoneNumber,
         admin.Name,
         admin.InvitedAt,
         admin.AcceptedAt,

@@ -173,12 +173,12 @@ export const PoolDetails: React.FC = () => {
   }, [id, getAccessToken]);
 
   // Admin handlers
-  const handleInviteAdmin = async (email: string, name: string) => {
+  const handleInviteAdmin = async (phoneNumber: string, name: string) => {
     if (!id) return;
     const token = await getAccessToken();
     if (!token) throw new Error("Unable to authenticate");
-    await managerApi.inviteAdmin(id, { email, name }, token);
-    showToast(`Invite sent to ${email}`, "success");
+    await managerApi.inviteAdmin(id, { phoneNumber, name }, token);
+    showToast(`Invite sent to ${phoneNumber}`, "success");
     loadData();
   };
 

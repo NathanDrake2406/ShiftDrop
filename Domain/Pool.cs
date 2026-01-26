@@ -77,19 +77,18 @@ public class Pool
         return _admins.Any(a => a.IsAccepted && a.Auth0Id == auth0Id);
     }
 
-    public Result<PoolAdmin> InviteAdmin(string email, string name, TimeProvider timeProvider)
+    public Result<PoolAdmin> InviteAdmin(string phoneNumber, string name, TimeProvider timeProvider)
     {
-        // Check for existing admin with same email (normalized to match storage format)
-        var normalizedEmail = email.Trim().ToLowerInvariant();
-        if (_admins.Any(a => a.Email == normalizedEmail))
-            return Result<PoolAdmin>.Failure("An admin with this email already exists");
-
-        var adminResult = PoolAdmin.Create(email, name, this, timeProvider);
+        var adminResult = PoolAdmin.Create(phoneNumber, name, this, timeProvider);
         if (adminResult.IsFailure)
             return adminResult;
 
-        _admins.Add(adminResult.Value!);
-        return adminResult;
+        var admin = adminResult.Value!;
+        if (_admins.Any(a => a.PhoneNumber == admin.PhoneNumber))
+            return Result<PoolAdmin>.Failure("An admin with this phone number already exists");
+
+        _admins.Add(admin);
+        return Result<PoolAdmin>.Success(admin);
     }
 
     public Result<Pool> RemoveAdmin(Guid adminId)
