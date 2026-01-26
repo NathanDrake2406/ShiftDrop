@@ -57,6 +57,7 @@ public class OutboxProcessor : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var smsService = scope.ServiceProvider.GetRequiredService<ISmsService>();
+        var pushService = scope.ServiceProvider.GetRequiredService<IPushNotificationService>();
         var timeProvider = scope.ServiceProvider.GetRequiredService<TimeProvider>();
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
@@ -71,7 +72,7 @@ public class OutboxProcessor : BackgroundService
 
         foreach (var message in messages)
         {
-            await ProcessMessage(message, smsService, timeProvider, ct);
+            await ProcessMessage(message, db, smsService, pushService, timeProvider, ct);
         }
 
         if (messages.Count > 0)
@@ -83,13 +84,15 @@ public class OutboxProcessor : BackgroundService
 
     private async Task ProcessMessage(
         OutboxMessage message,
+        AppDbContext db,
         ISmsService smsService,
+        IPushNotificationService pushService,
         TimeProvider timeProvider,
         CancellationToken ct)
     {
         try
         {
-            await DispatchMessage(message, smsService, ct);
+            await DispatchMessage(message, db, smsService, pushService, ct);
             message.MarkAsSent(timeProvider);
 
             _logger.LogDebug(
@@ -112,7 +115,9 @@ public class OutboxProcessor : BackgroundService
 
     private async Task DispatchMessage(
         OutboxMessage message,
+        AppDbContext db,
         ISmsService smsService,
+        IPushNotificationService pushService,
         CancellationToken ct)
     {
         switch (message.MessageType)
@@ -120,7 +125,12 @@ public class OutboxProcessor : BackgroundService
             case nameof(ShiftBroadcastPayload):
                 var broadcast = message.GetPayload<ShiftBroadcastPayload>();
                 if (broadcast != null)
+                {
                     await smsService.SendShiftBroadcast(broadcast, ct);
+
+                    // Also send push notification (supplementary to SMS)
+                    await SendPushForShiftBroadcast(db, pushService, broadcast, ct);
+                }
                 break;
 
             case nameof(InviteSmsPayload):
@@ -148,6 +158,50 @@ public class OutboxProcessor : BackgroundService
                     message.Id);
                 // Mark as sent to avoid infinite retries for unknown types
                 break;
+        }
+    }
+
+    /// <summary>
+    /// Sends a push notification for a shift broadcast. Push is supplementary to SMS -
+    /// if it fails, we log a warning but don't fail the outbox message.
+    /// </summary>
+    private async Task SendPushForShiftBroadcast(
+        AppDbContext db,
+        IPushNotificationService pushService,
+        ShiftBroadcastPayload broadcast,
+        CancellationToken ct)
+    {
+        try
+        {
+            // Look up the ShiftNotification to get the CasualId
+            var notification = await db.ShiftNotifications
+                .AsNoTracking()
+                .Where(n => n.Id == broadcast.ShiftNotificationId)
+                .Select(n => new { n.CasualId, n.ClaimToken })
+                .FirstOrDefaultAsync(ct);
+
+            if (notification == null)
+            {
+                _logger.LogWarning(
+                    "ShiftNotification {NotificationId} not found for push notification",
+                    broadcast.ShiftNotificationId);
+                return;
+            }
+
+            await pushService.SendAsync(
+                notification.CasualId,
+                "New Shift Available!",
+                "A new shift is available. Tap to claim.",
+                $"/casual/claim/{notification.ClaimToken}",
+                ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Failed to send push notification for ShiftNotification {NotificationId}",
+                broadcast.ShiftNotificationId);
+            // Don't rethrow - push is supplementary to SMS
         }
     }
 }
