@@ -64,7 +64,7 @@ export function TeamTab({ ownerLabel, admins, onInviteAdmin, onRemoveAdmin, isLo
         <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-3">Pool Owner</p>
         <div className="flex items-center justify-between">
           <span className="font-medium text-slate-800 dark:text-slate-200">{ownerLabel}</span>
-          <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+          <span className="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
             Owner
           </span>
         </div>

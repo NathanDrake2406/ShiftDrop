@@ -146,7 +146,7 @@ export const ManagerDashboard: React.FC = () => {
               className="ui-surface p-5 rounded-2xl shadow-sm transition-transform cursor-pointer flex justify-between items-center group"
             >
               <div className="flex-1" onClick={() => navigate(`/manager/pool/${pool.id}`)}>
-                <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100 group-hover:text-orange-500 dark:group-hover:text-orange-400 transition-colors">
                   {pool.name}
                 </h3>
               </div>
@@ -156,7 +156,7 @@ export const ManagerDashboard: React.FC = () => {
                     e.stopPropagation();
                     setDeletingPool(pool);
                   }}
-                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg sm:opacity-0 sm:group-hover:opacity-100 transition-all"
                   title="Delete pool"
                 >
                   <Trash2 className="w-5 h-5" />
@@ -174,7 +174,7 @@ export const ManagerDashboard: React.FC = () => {
 
         <Button
           variant="secondary"
-          className="w-full border-dashed border-2 py-8 text-slate-400 hover:text-blue-600 hover:border-blue-200"
+          className="w-full border-dashed border-2 py-8 text-slate-400 hover:text-orange-500 hover:border-orange-200"
           onClick={openCreatePool}
         >
           <div className="flex flex-col items-center gap-2">

@@ -4,6 +4,7 @@ import { Layout } from "../components/ui/Layout";
 import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { TimeInput } from "../components/ui/TimeInput";
 import { ShiftCard } from "../components/ShiftCard";
 import { ShiftCardSkeleton } from "../components/ui/Skeleton";
 import { TeamTab } from "../components/TeamTab";
@@ -360,7 +361,7 @@ export const PoolDetails: React.FC = () => {
       if (!token) return;
       await managerApi.resendInvite(id, casual.id, token);
       showToast(`Invite resent to ${casual.name}`, "success");
-      loadData();
+      // No reload needed - resending doesn't change displayed data
     } catch (err) {
       if (err instanceof ApiError) {
         showToast(err.message, "error");
@@ -471,19 +472,19 @@ export const PoolDetails: React.FC = () => {
       {/* Tabs */}
       <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-4">
         <button
-          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === "shifts" ? "bg-white dark:bg-slate-700 shadow text-blue-600 dark:text-blue-400" : "text-slate-500 dark:text-slate-400"}`}
+          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === "shifts" ? "bg-white dark:bg-slate-700 shadow text-orange-500 dark:text-orange-400" : "text-slate-500 dark:text-slate-400"}`}
           onClick={() => setActiveTab("shifts")}
         >
           Shifts
         </button>
         <button
-          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === "casuals" ? "bg-white dark:bg-slate-700 shadow text-blue-600 dark:text-blue-400" : "text-slate-500 dark:text-slate-400"}`}
+          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === "casuals" ? "bg-white dark:bg-slate-700 shadow text-orange-500 dark:text-orange-400" : "text-slate-500 dark:text-slate-400"}`}
           onClick={() => setActiveTab("casuals")}
         >
           Casuals ({pool.casuals.length})
         </button>
         <button
-          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === "team" ? "bg-white dark:bg-slate-700 shadow text-blue-600 dark:text-blue-400" : "text-slate-500 dark:text-slate-400"}`}
+          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === "team" ? "bg-white dark:bg-slate-700 shadow text-orange-500 dark:text-orange-400" : "text-slate-500 dark:text-slate-400"}`}
           onClick={() => setActiveTab("team")}
         >
           Team
@@ -568,7 +569,7 @@ export const PoolDetails: React.FC = () => {
       {activeTab === "shifts" && !isCreating && (
         <div className="fixed bottom-6 left-0 right-0 px-4 flex justify-center z-20">
           <Button
-            className="shadow-xl rounded-full px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+            className="shadow-xl rounded-full px-8 py-4 bg-orange-500 hover:bg-orange-600 text-white flex items-center gap-2"
             onClick={() => {
               setShiftForm(buildDefaultShiftForm());
               setIsCreating(true);
@@ -592,21 +593,17 @@ export const PoolDetails: React.FC = () => {
                     type="date"
                     className="ui-input-field"
                     value={shiftForm.startDate}
+                    min={new Date().toISOString().split("T")[0]}
                     onChange={(e) => setShiftForm({ ...shiftForm, startDate: e.target.value })}
                   />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Time</label>
-                <div className="ui-input-shell">
-                  <input
-                    type="time"
-                    step="60"
-                    className="ui-input-field"
-                    value={shiftForm.startTime}
-                    onChange={(e) => setShiftForm({ ...shiftForm, startTime: e.target.value })}
-                  />
-                </div>
+                <TimeInput
+                  value={shiftForm.startTime}
+                  onChange={(value) => setShiftForm({ ...shiftForm, startTime: value })}
+                />
               </div>
             </div>
           </div>
@@ -620,21 +617,17 @@ export const PoolDetails: React.FC = () => {
                     type="date"
                     className="ui-input-field"
                     value={shiftForm.endDate}
+                    min={shiftForm.startDate || new Date().toISOString().split("T")[0]}
                     onChange={(e) => setShiftForm({ ...shiftForm, endDate: e.target.value })}
                   />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Time</label>
-                <div className="ui-input-shell">
-                  <input
-                    type="time"
-                    step="60"
-                    className="ui-input-field"
-                    value={shiftForm.endTime}
-                    onChange={(e) => setShiftForm({ ...shiftForm, endTime: e.target.value })}
-                  />
-                </div>
+                <TimeInput
+                  value={shiftForm.endTime}
+                  onChange={(value) => setShiftForm({ ...shiftForm, endTime: value })}
+                />
               </div>
             </div>
           </div>
@@ -775,7 +768,7 @@ function CasualRow({ casual, onRemove, onResendInvite, onEditAvailability, isRes
         {statusBadge}
         <button
           onClick={onEditAvailability}
-          className="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+          className="p-2 text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
           title="Edit availability"
         >
           <Calendar className="w-4 h-4" />
@@ -784,7 +777,7 @@ function CasualRow({ casual, onRemove, onResendInvite, onEditAvailability, isRes
           <button
             onClick={onResendInvite}
             disabled={isResending}
-            className="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors disabled:opacity-50"
+            className="p-2 text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors disabled:opacity-50"
             title="Resend invite"
           >
             <RefreshCw className={`w-4 h-4 ${isResending ? "animate-spin" : ""}`} />

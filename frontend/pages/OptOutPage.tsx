@@ -46,7 +46,7 @@ export const OptOutPage: React.FC = () => {
         <div className="ui-surface p-8 rounded-2xl shadow-lg max-w-md w-full text-center">
           {state.status === "loading" && (
             <>
-              <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
               <h1 className="text-xl font-bold text-slate-800 dark:text-white">Processing your request...</h1>
               <p className="text-slate-500 dark:text-slate-400 mt-2">Please wait.</p>
             </>

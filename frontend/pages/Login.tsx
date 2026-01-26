@@ -27,7 +27,9 @@ export const Login: React.FC = () => {
     <Layout>
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-8 px-4">
         <div className="text-center">
-          <h1 className="text-4xl font-extrabold text-blue-600 dark:text-blue-500 tracking-tight mb-2">ShiftDrop</h1>
+          <h1 className="text-4xl font-extrabold text-orange-500 dark:text-orange-400 tracking-tight mb-2 font-display">
+            ShiftDrop
+          </h1>
           <p className="text-slate-500 dark:text-slate-400">Fast shift filling for busy teams.</p>
         </div>
 
@@ -68,7 +70,7 @@ export const Login: React.FC = () => {
             </div>
             <span
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                demoMode ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-600"
+                demoMode ? "bg-orange-500" : "bg-slate-300 dark:bg-slate-600"
               }`}
               aria-hidden="true"
             >

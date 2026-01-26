@@ -39,10 +39,10 @@ export const LandingPage: React.FC = () => {
       {/* Header */}
       <header className="px-6 py-4 flex justify-between items-center max-w-6xl mx-auto">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg flex items-center justify-center shadow-lg shadow-orange-500/30">
             <Zap className="w-5 h-5 text-white" />
           </div>
-          <span className="font-bold text-xl text-slate-900 dark:text-white">ShiftDrop</span>
+          <span className="font-bold text-xl text-slate-900 dark:text-white font-display">ShiftDrop</span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -61,10 +61,12 @@ export const LandingPage: React.FC = () => {
       {/* Hero */}
       <main className="px-6 pt-16 pb-24 max-w-6xl mx-auto">
         <div className="text-center max-w-3xl mx-auto">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-slate-900 dark:text-white leading-tight">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-slate-900 dark:text-white leading-tight font-display">
             Fill last-minute shifts
             <br />
-            <span className="text-blue-600">without the chaos.</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-amber-500">
+              without the chaos.
+            </span>
           </h1>
           <p className="mt-6 text-lg sm:text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto">
             Post a shift, your team gets an SMS, first to respond claims it. Simple, fair, and no one gets left on read.
@@ -86,8 +88,8 @@ export const LandingPage: React.FC = () => {
           </h2>
           <div className="grid md:grid-cols-3 gap-8 md:gap-12">
             <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <MessageSquare className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+              <div className="w-16 h-16 bg-orange-100 dark:bg-orange-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <MessageSquare className="w-8 h-8 text-orange-500 dark:text-orange-400" />
               </div>
               <h3 className="font-bold text-xl text-slate-900 dark:text-white mb-3">1. Post a shift</h3>
               <p className="text-slate-600 dark:text-slate-400">Pick a time, set how many people you need</p>
@@ -154,14 +156,14 @@ export const LandingPage: React.FC = () => {
 
         {/* CTA */}
         <div className="mt-32 text-center">
-          <div className="bg-blue-600 dark:bg-blue-700 rounded-3xl p-12 max-w-3xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">See how it works</h2>
-            <p className="text-blue-100 mb-8">Try the demo — no account needed</p>
+          <div className="bg-gradient-to-br from-orange-500 to-amber-600 dark:from-orange-600 dark:to-amber-700 rounded-3xl p-12 max-w-3xl mx-auto shadow-2xl shadow-orange-500/20">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4 font-display">See how it works</h2>
+            <p className="text-orange-100 mb-8">Try the demo — no account needed</p>
             <Button
               size="lg"
               variant="secondary"
               onClick={handleTryDemo}
-              className="text-lg px-8 py-6 bg-white text-blue-600 hover:bg-blue-50"
+              className="text-lg px-8 py-6 bg-white text-orange-600 hover:bg-orange-50"
             >
               Try Demo Now
             </Button>
@@ -184,8 +186,8 @@ const FeatureCard: React.FC<{ icon: React.ReactNode; title: string; description:
   title,
   description,
 }) => (
-  <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
-    <div className="text-blue-600 dark:text-blue-400 mb-4">{icon}</div>
+  <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-orange-200 dark:hover:border-orange-800 transition-colors">
+    <div className="text-orange-500 dark:text-orange-400 mb-4">{icon}</div>
     <h3 className="font-semibold text-lg text-slate-900 dark:text-white mb-2">{title}</h3>
     <p className="text-slate-600 dark:text-slate-400 text-sm">{description}</p>
   </div>

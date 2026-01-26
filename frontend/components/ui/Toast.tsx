@@ -4,7 +4,7 @@ import { useToast, type Toast as ToastType, type ToastType as ToastVariant } fro
 const icons: Record<ToastVariant, React.ReactNode> = {
   success: <CheckCircle className="w-5 h-5 text-emerald-500" />,
   error: <AlertCircle className="w-5 h-5 text-red-500" />,
-  info: <Info className="w-5 h-5 text-blue-500" />,
+  info: <Info className="w-5 h-5 text-orange-500" />,
 };
 
 const styles: Record<ToastVariant, string> = {

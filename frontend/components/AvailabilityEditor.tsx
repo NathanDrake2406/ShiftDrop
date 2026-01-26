@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "./ui/Button";
+import { TimeInput } from "./ui/TimeInput";
 import type { AvailabilitySlot } from "../types/api";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -98,25 +99,15 @@ export function AvailabilityEditor({ availability, onSave, isLoading }: Availabi
                 type="checkbox"
                 checked={!!slot}
                 onChange={() => toggleDay(dayIndex)}
-                className="rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
+                className="rounded border-slate-300 dark:border-slate-600 text-orange-500 focus:ring-orange-400"
               />
               <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{dayName}</span>
             </label>
             {slot ? (
               <div className="flex items-center gap-2">
-                <input
-                  type="time"
-                  value={slot.from}
-                  onChange={(e) => updateTime(dayIndex, "from", e.target.value)}
-                  className="ui-input-field text-sm py-1"
-                />
-                <span className="text-slate-400">-</span>
-                <input
-                  type="time"
-                  value={slot.to}
-                  onChange={(e) => updateTime(dayIndex, "to", e.target.value)}
-                  className="ui-input-field text-sm py-1"
-                />
+                <TimeInput value={slot.from} onChange={(value) => updateTime(dayIndex, "from", value)} size="compact" />
+                <span className="text-slate-400 text-sm">to</span>
+                <TimeInput value={slot.to} onChange={(value) => updateTime(dayIndex, "to", value)} size="compact" />
               </div>
             ) : (
               <span className="text-sm text-slate-400 dark:text-slate-500">Not available</span>
