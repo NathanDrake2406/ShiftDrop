@@ -12,6 +12,7 @@ import type {
   PoolAdminResponse,
   PoolDetailResponse,
   PoolResponse,
+  PoolStatsResponse,
   ResendInviteResponse,
   SetAvailabilityRequest,
   ShiftDetailResponse,
@@ -29,6 +30,20 @@ export const getPoolShifts = (poolId: string, token: string) =>
   getDemoMode()
     ? demoManagerApi.getPoolShifts(poolId)
     : apiRequest<ShiftDetailResponse[]>(`/pools/${poolId}/shifts`, { token });
+
+export const getPoolStats = (poolId: string, token: string) =>
+  getDemoMode()
+    ? Promise.resolve({
+        totalShiftsPosted: 12,
+        shiftsFilled: 8,
+        shiftsCancelled: 1,
+        shiftsOpen: 3,
+        totalSpotsClaimed: 15,
+        fillRatePercent: 72.7,
+        activeCasuals: 6,
+        totalCasuals: 8,
+      } as PoolStatsResponse)
+    : apiRequest<PoolStatsResponse>(`/pools/${poolId}/stats`, { token });
 
 export const createPool = (name: string, token: string) => {
   if (getDemoMode()) {

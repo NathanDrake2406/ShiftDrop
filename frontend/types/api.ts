@@ -94,6 +94,22 @@ export interface CreatePoolRequest {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Pool Statistics
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** GET /pools/:id/stats */
+export interface PoolStatsResponse {
+  totalShiftsPosted: number;
+  shiftsFilled: number;
+  shiftsCancelled: number;
+  shiftsOpen: number;
+  totalSpotsClaimed: number;
+  fillRatePercent: number;
+  activeCasuals: number;
+  totalCasuals: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Casual API responses (phone-based auth)
 // ─────────────────────────────────────────────────────────────────────────────
 
