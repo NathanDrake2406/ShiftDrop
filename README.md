@@ -6,7 +6,7 @@ Someone calls in sick. Now you're texting everyone, tracking who replied, who's 
 
 ShiftDrop makes it simple: post a shift, your team gets an SMS, first to respond claims it. Fair, transparent, and no one gets forgotten.
 
-**Live:** [shiftdrop-app.vercel.app](https://shiftdrop-app.vercel.app)
+**Live:** [shiftdrop-app.vercel.app](https://shift-drop.vercel.app)
 
 ---
 
