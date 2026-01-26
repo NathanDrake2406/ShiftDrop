@@ -16,6 +16,16 @@ builder.Services.AddCors(options =>
         policy.WithOrigins("http://localhost:3000")
             .AllowAnyHeader()
             .AllowAnyMethod());
+
+    // Production CORS - allow Vercel frontend and configurable origins
+    var allowedOrigins = builder.Configuration["Cors:AllowedOrigins"]?
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        ?? Array.Empty<string>();
+
+    options.AddPolicy("ProdCors", policy =>
+        policy.WithOrigins(allowedOrigins.Concat(new[] { "https://frontend-five-lovat-27.vercel.app" }).ToArray())
+            .AllowAnyHeader()
+            .AllowAnyMethod());
 });
 
 // SMS service: Use Twilio if configured, otherwise Console (logs only)
@@ -58,10 +68,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
     app.UseCors("DevCors");
 }
-
-if (!app.Environment.IsDevelopment())
+else
 {
     app.UseHttpsRedirection();
+    app.UseCors("ProdCors");
 }
 app.UseAuthentication();
 app.UseAuthorization();
