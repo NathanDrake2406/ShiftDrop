@@ -143,3 +143,10 @@ public record ClaimConfirmationPayload(
     string PhoneNumber,
     string ShiftDescription
 );
+
+public record ShiftReopenedPayload(
+    Guid ShiftNotificationId,
+    string PhoneNumber,
+    string ShiftDescription,
+    string ClaimUrl
+);

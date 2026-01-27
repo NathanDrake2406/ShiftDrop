@@ -151,6 +151,12 @@ public class OutboxProcessor : BackgroundService
                     await smsService.SendClaimConfirmation(confirmation, ct);
                 break;
 
+            case nameof(ShiftReopenedPayload):
+                var reopened = message.GetPayload<ShiftReopenedPayload>();
+                if (reopened != null)
+                    await smsService.SendShiftReopened(reopened, ct);
+                break;
+
             default:
                 _logger.LogWarning(
                     "Unknown message type {MessageType} for message {MessageId}",

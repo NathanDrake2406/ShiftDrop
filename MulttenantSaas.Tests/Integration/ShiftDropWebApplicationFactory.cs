@@ -5,8 +5,11 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
+using Serilog;
 using ShiftDrop.Common.Services;
 using Testcontainers.PostgreSql;
 
@@ -30,8 +33,36 @@ public class ShiftDropWebApplicationFactory : WebApplicationFactory<Program>, IA
     public ISmsService SmsServiceMock { get; } = Substitute.For<ISmsService>();
     public FakeTimeProvider FakeTimeProvider { get; } = new();
 
+    private static readonly object _serilogLock = new();
+    private static bool _serilogReset;
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // Reset Serilog's static logger to prevent "logger is already frozen" errors
+        // when multiple test classes run. Each WebApplicationFactory tries to freeze
+        // the same static Log.Logger, which fails on subsequent attempts.
+        // Use a lock to ensure only one thread does this.
+        lock (_serilogLock)
+        {
+            if (!_serilogReset)
+            {
+                Log.CloseAndFlush();
+                Log.Logger = new LoggerConfiguration()
+                    .MinimumLevel.Warning()
+                    .WriteTo.Console()
+                    .CreateLogger();
+                _serilogReset = true;
+            }
+        }
+
+        // Use standard logging instead of Serilog for tests
+        builder.ConfigureLogging(logging =>
+        {
+            logging.ClearProviders();
+            logging.AddConsole();
+            logging.SetMinimumLevel(LogLevel.Warning);
+        });
+
         builder.ConfigureTestServices(services =>
         {
             // Remove the existing DbContext registration
@@ -51,6 +82,10 @@ public class ShiftDropWebApplicationFactory : WebApplicationFactory<Program>, IA
             // Replace TimeProvider with fake
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(FakeTimeProvider);
+
+            // Remove the OutboxProcessor background service to prevent it from
+            // trying to query the database before it's created
+            services.RemoveAll<IHostedService>();
 
             // Replace authentication with test scheme
             // We need to reconfigure the authentication to use our test handler as default
@@ -74,6 +109,8 @@ public class ShiftDropWebApplicationFactory : WebApplicationFactory<Program>, IA
         });
     }
 
+    private bool _initialized;
+
     public async Task InitializeAsync()
     {
         // Start PostgreSQL container
@@ -86,6 +123,22 @@ public class ShiftDropWebApplicationFactory : WebApplicationFactory<Program>, IA
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await db.Database.EnsureCreatedAsync();
+
+        _initialized = true;
+    }
+
+    /// <summary>
+    /// Ensures the factory is fully initialized before running tests.
+    /// Call this from test base classes before accessing the database.
+    /// </summary>
+    public void EnsureInitialized()
+    {
+        if (!_initialized)
+        {
+            throw new InvalidOperationException(
+                "ShiftDropWebApplicationFactory is not initialized. " +
+                "Ensure IAsyncLifetime.InitializeAsync() has completed before running tests.");
+        }
     }
 
     public new async Task DisposeAsync()

@@ -46,8 +46,6 @@ public static class PostShiftEndpoint
             .ToList();
 
         // Convert shift times to Australian Eastern Time for display
-        // Note: EF Core may return DateTime with Kind=Unspecified from PostgreSQL,
-        // so we explicitly specify UTC before converting
         var aest = TimeZoneInfo.FindSystemTimeZoneById("Australia/Sydney");
         var utcStart = DateTime.SpecifyKind(shift.StartsAt, DateTimeKind.Utc);
         var utcEnd = DateTime.SpecifyKind(shift.EndsAt, DateTimeKind.Utc);

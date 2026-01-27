@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ShiftDrop.Common.Responses;
-using ShiftDrop.Common.Services;
+using ShiftDrop.Domain;
 
 namespace ShiftDrop.Features.Shifts.ClaimShift;
 
@@ -16,7 +16,6 @@ public static class ClaimShiftEndpoint
         ClaimShiftRequest request,
         AppDbContext db,
         TimeProvider timeProvider,
-        ISmsService smsService,
         CancellationToken ct)
     {
         var casual = await db.Casuals
@@ -37,6 +36,13 @@ public static class ClaimShiftEndpoint
         if (result.IsFailure)
             return Results.BadRequest(new { error = result.Error });
 
+        var claim = result.Value!;
+
+        // Queue SMS confirmation via outbox (same transaction as the claim)
+        var shiftDescription = FormatShiftDescription(shift);
+        var payload = new ClaimConfirmationPayload(claim.Id, casual.PhoneNumber, shiftDescription);
+        db.OutboxMessages.Add(OutboxMessage.Create(payload, timeProvider));
+
         try
         {
             await db.SaveChangesAsync(ct);
@@ -46,13 +52,21 @@ public static class ClaimShiftEndpoint
             return Results.Conflict(new { error = "Sorry, this shift was just filled. Try another!" });
         }
 
-        await smsService.NotifyShiftClaimed(shift, casual);
-
         return Results.Ok(new
         {
             message = "Shift claimed successfully!",
             shift = new ShiftResponse(shift)
         });
+    }
+
+    private static string FormatShiftDescription(Shift shift)
+    {
+        var aest = TimeZoneInfo.FindSystemTimeZoneById("Australia/Sydney");
+        var utcStart = DateTime.SpecifyKind(shift.StartsAt, DateTimeKind.Utc);
+        var utcEnd = DateTime.SpecifyKind(shift.EndsAt, DateTimeKind.Utc);
+        var localStart = TimeZoneInfo.ConvertTimeFromUtc(utcStart, aest);
+        var localEnd = TimeZoneInfo.ConvertTimeFromUtc(utcEnd, aest);
+        return $"{localStart:ddd d MMM, h:mmtt} - {localEnd:h:mmtt}";
     }
 }
 

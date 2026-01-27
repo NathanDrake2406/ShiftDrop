@@ -28,27 +28,6 @@ public class TwilioSmsService : ISmsService
         TwilioClient.Init(accountSid, authToken);
     }
 
-    public Task BroadcastShiftAvailable(Shift shift, IEnumerable<Casual> casuals)
-    {
-        // Legacy method - should migrate to outbox pattern
-        foreach (var casual in casuals)
-        {
-            _logger.LogInformation(
-                "Would send SMS to {PhoneNumber}: New shift {ShiftId}",
-                casual.PhoneNumber, shift.Id);
-        }
-        return Task.CompletedTask;
-    }
-
-    public Task NotifyShiftClaimed(Shift shift, Casual casual)
-    {
-        // Legacy method - should migrate to outbox pattern
-        _logger.LogInformation(
-            "Would send SMS to {PhoneNumber}: Shift {ShiftId} claimed",
-            casual.PhoneNumber, shift.Id);
-        return Task.CompletedTask;
-    }
-
     public async Task SendShiftBroadcast(ShiftBroadcastPayload payload, CancellationToken ct)
     {
         var body = $"{payload.ShiftDescription}\nClaim: {payload.ClaimUrl}";
@@ -71,6 +50,12 @@ public class TwilioSmsService : ISmsService
     {
         var body = $"Confirmed! {payload.ShiftDescription}";
         await SendSms(payload.PhoneNumber, body, "ClaimConfirmation", ct);
+    }
+
+    public async Task SendShiftReopened(ShiftReopenedPayload payload, CancellationToken ct)
+    {
+        var body = $"Spot opened! {payload.ShiftDescription}\nClaim: {payload.ClaimUrl}";
+        await SendSms(payload.PhoneNumber, body, "ShiftReopened", ct);
     }
 
     private async Task SendSms(string to, string body, string messageType, CancellationToken ct)

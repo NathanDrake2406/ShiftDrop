@@ -177,6 +177,131 @@ public class CasualEndpointTests : IntegrationTestBase
         shifts.Should().HaveCount(1);
     }
 
+    [Fact]
+    public async Task ClaimShift_CreatesClaimConfirmationOutboxMessage()
+    {
+        // Arrange
+        var scenario = await SeedScenarioAsync(ManagerId, casualCount: 1, shiftCount: 1);
+
+        // Act
+        var response = await Client.PostAsJsonAsync(
+            $"/casual/shifts/{scenario.FirstShift.Id}/claim",
+            new ClaimShiftRequest(scenario.FirstCasual.PhoneNumber));
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Verify ClaimConfirmationPayload outbox message was created
+        var outboxCount = await QueryDbAsync(async db =>
+            await db.OutboxMessages.CountAsync(m => m.MessageType == "ClaimConfirmationPayload"));
+        outboxCount.Should().Be(1, "claim should create one confirmation outbox message");
+    }
+
+    [Fact]
+    public async Task ReleaseShift_CreatesShiftReopenedOutboxMessages()
+    {
+        // Arrange: Create scenario with 3 casuals (all activated), 1 shift
+        var scenario = await SeedScenarioAsync(ManagerId, casualCount: 3, shiftCount: 1, activateCasuals: true);
+
+        // Casual 0 claims the shift
+        await Client.PostAsJsonAsync(
+            $"/casual/shifts/{scenario.FirstShift.Id}/claim",
+            new ClaimShiftRequest(scenario.Casuals[0].PhoneNumber));
+
+        // Clear any outbox messages from the claim
+        await ExecuteDbAsync(async db =>
+        {
+            db.OutboxMessages.RemoveRange(db.OutboxMessages);
+            await db.SaveChangesAsync();
+        });
+
+        // Act: Casual 0 releases the shift
+        var response = await Client.PostAsJsonAsync(
+            $"/casual/shifts/{scenario.FirstShift.Id}/release",
+            new ReleaseShiftRequest(scenario.Casuals[0].PhoneNumber));
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Verify ShiftReopenedPayload outbox messages were created for the other 2 casuals
+        var outboxCount = await QueryDbAsync(async db =>
+            await db.OutboxMessages.CountAsync(m => m.MessageType == "ShiftReopenedPayload"));
+        outboxCount.Should().Be(2, "should notify the 2 other active casuals about reopened spot");
+    }
+
+    [Fact]
+    public async Task ManagerReleaseCasual_CreatesShiftReopenedOutboxMessages()
+    {
+        // Arrange: Create scenario with 3 casuals (all activated), 1 shift
+        var scenario = await SeedScenarioAsync(ManagerId, casualCount: 3, shiftCount: 1, activateCasuals: true);
+        var client = CreateAuthenticatedClient(ManagerId);
+
+        // Casual 0 claims the shift
+        await Client.PostAsJsonAsync(
+            $"/casual/shifts/{scenario.FirstShift.Id}/claim",
+            new ClaimShiftRequest(scenario.Casuals[0].PhoneNumber));
+
+        // Clear any outbox messages from the claim
+        await ExecuteDbAsync(async db =>
+        {
+            db.OutboxMessages.RemoveRange(db.OutboxMessages);
+            await db.SaveChangesAsync();
+        });
+
+        // Act: Manager releases Casual 0 from the shift
+        var response = await client.PostAsync(
+            $"/pools/{scenario.Pool.Id}/shifts/{scenario.FirstShift.Id}/release/{scenario.Casuals[0].Id}",
+            null);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Verify ShiftReopenedPayload outbox messages were created for the other 2 casuals
+        var outboxCount = await QueryDbAsync(async db =>
+            await db.OutboxMessages.CountAsync(m => m.MessageType == "ShiftReopenedPayload"));
+        outboxCount.Should().Be(2, "should notify the 2 other active casuals about reopened spot");
+    }
+
+    [Fact]
+    public async Task ReleaseShift_DoesNotNotifyInactiveCasuals()
+    {
+        // Arrange: Create scenario with 2 casuals - only 1 activated
+        var scenario = await SeedScenarioAsync(ManagerId, casualCount: 2, shiftCount: 1, activateCasuals: false);
+
+        // Activate only Casual 0
+        await ExecuteDbAsync(async db =>
+        {
+            var casual = await db.Casuals.FindAsync(scenario.Casuals[0].Id);
+            casual!.AcceptInvite(casual.InviteToken!, TimeProvider);
+            await db.SaveChangesAsync();
+        });
+
+        // Casual 0 claims the shift
+        await Client.PostAsJsonAsync(
+            $"/casual/shifts/{scenario.FirstShift.Id}/claim",
+            new ClaimShiftRequest(scenario.Casuals[0].PhoneNumber));
+
+        // Clear outbox
+        await ExecuteDbAsync(async db =>
+        {
+            db.OutboxMessages.RemoveRange(db.OutboxMessages);
+            await db.SaveChangesAsync();
+        });
+
+        // Act: Casual 0 releases the shift
+        var response = await Client.PostAsJsonAsync(
+            $"/casual/shifts/{scenario.FirstShift.Id}/release",
+            new ReleaseShiftRequest(scenario.Casuals[0].PhoneNumber));
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Should NOT notify Casual 1 because they haven't accepted invite
+        var outboxCount = await QueryDbAsync(async db =>
+            await db.OutboxMessages.CountAsync(m => m.MessageType == "ShiftReopenedPayload"));
+        outboxCount.Should().Be(0, "should not notify inactive casuals");
+    }
+
     // DTOs for JSON serialization/deserialization
     private record ClaimShiftRequest(string PhoneNumber);
     private record ReleaseShiftRequest(string PhoneNumber);

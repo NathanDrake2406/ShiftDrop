@@ -136,6 +136,9 @@ public abstract class IntegrationTestBase : IClassFixture<ShiftDropWebApplicatio
     /// </summary>
     public async Task InitializeAsync()
     {
+        // Ensure the factory is fully initialized (container started, DB created)
+        Factory.EnsureInitialized();
+
         // Clear all data before each test
         await ExecuteDbAsync(async db =>
         {
