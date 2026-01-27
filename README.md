@@ -1,12 +1,17 @@
 # ShiftDrop
 
+[![CI](https://github.com/NathanDrake2406/ShiftDrop/actions/workflows/ci.yml/badge.svg)](https://github.com/NathanDrake2406/ShiftDrop/actions/workflows/ci.yml)
+[![.NET](https://img.shields.io/badge/.NET-8.0-512BD4)](https://dotnet.microsoft.com/)
+[![React](https://img.shields.io/badge/React-19-61DAFB)](https://react.dev/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 **Fill last-minute shifts without the chaos.**
 
 Someone calls in sick. Now you're texting everyone, tracking who replied, who's available, who left you on read. It takes forever.
 
 ShiftDrop makes it simple: post a shift, your team gets an SMS, first to respond claims it. Fair, transparent, and no one gets forgotten.
 
-**Live:** [shift-drop.vercel.app](https://shift-drop.vercel.app)
+**Live Demo:** [shift-drop.vercel.app](https://shift-drop.vercel.app)
 
 ---
 
@@ -20,15 +25,16 @@ No app downloads for staff. Just SMS links that work.
 
 ---
 
-## The stack
+## Tech Stack
 
 | Layer | Tech |
 |-------|------|
-| **Frontend** | React 19 + Vite + Tailwind v4 |
-| **Backend** | .NET 8 Minimal API, vertical slices |
-| **Database** | PostgreSQL |
+| **Frontend** | React 19 + TypeScript + Vite + Tailwind v4 |
+| **Backend** | .NET 8 Minimal API, Vertical Slice Architecture |
+| **Database** | PostgreSQL with EF Core |
 | **Auth** | Auth0 (managers) / SMS tokens (casuals) |
-| **SMS** | Twilio via outbox pattern |
+| **SMS** | Twilio via transactional outbox pattern |
+| **Logging** | Serilog with structured JSON output |
 | **Hosting** | Vercel (frontend) + Railway (backend) |
 
 ---
@@ -61,11 +67,18 @@ flowchart LR
   twilio -->|SMS| casual
 ```
 
-### Why the outbox pattern?
+### Key Architectural Decisions
 
-Sending SMS directly after `SaveChanges()` can cause issues — if Twilio fails after your DB commits, data gets out of sync. The outbox queues messages in the same transaction, then a background processor sends them. Reliable delivery, nothing gets lost.
+| Decision | Why |
+|----------|-----|
+| **Vertical slices** | Each feature is self-contained in one folder, not scattered across layers |
+| **Result\<T\>** | Explicit error handling. No exceptions for control flow. |
+| **Outbox pattern** | SMS delivery survives crashes. Messages queued in same DB transaction. |
+| **Concurrency tokens** | Two casuals claim the last spot? One wins, one gets a clean 409 error. |
+| **SMS-first for casuals** | No app download, no account creation. Click link, claim shift. |
+| **Multi-tenancy** | Pools isolate data. Tests verify no cross-tenant leakage. |
 
-### Domain model
+### Domain Model
 
 ```mermaid
 erDiagram
@@ -77,29 +90,39 @@ erDiagram
   CASUAL ||--o{ SHIFT_NOTIFICATION : receives
 ```
 
-- **Pool** — A manager's group of casuals
-- **Shift** — Has spots. Uses concurrency tokens to handle race conditions.
+- **Pool** — A manager's group of casuals (tenant boundary)
+- **Shift** — Has spots. Uses EF Core concurrency tokens for race conditions.
 - **Casual** — Worker identified by phone. No account needed.
 - **Pool Admin (2IC)** — Delegated managers who can post shifts
 
 ---
 
-## Run it locally
+## Quick Start
 
-### Backend
+### Using Docker (Recommended)
+
 ```bash
-dotnet build
-dotnet run # http://localhost:5228
+docker-compose up -d
+# API: http://localhost:5228
+# PostgreSQL: localhost:5432
 ```
 
-### Frontend
+### Manual Setup
+
+**Backend:**
+```bash
+dotnet build
+dotnet run --project . # http://localhost:5228
+```
+
+**Frontend:**
 ```bash
 cd frontend
 npm install
 npm run dev # http://localhost:3000
 ```
 
-Without `VITE_API_URL`, frontend uses an in-memory mock API. Good for hacking on UI.
+Without `VITE_API_URL`, frontend uses an in-memory mock API — great for UI development.
 
 ---
 
@@ -107,7 +130,7 @@ Without `VITE_API_URL`, frontend uses an in-memory mock API. Good for hacking on
 
 ### Backend (env vars or `appsettings.json`)
 
-```
+```env
 ConnectionStrings__DefaultConnection=Host=...;Database=...
 Auth0__Authority=https://your-tenant.auth0.com/
 Auth0__Audience=https://your-api
@@ -119,7 +142,7 @@ Twilio__FromNumber=+1234567890
 
 ### Frontend (`frontend/.env.local`)
 
-```
+```env
 VITE_API_URL=http://localhost:5228
 VITE_AUTH0_DOMAIN=your-tenant.auth0.com
 VITE_AUTH0_CLIENT_ID=your-client-id
@@ -128,32 +151,68 @@ VITE_AUTH0_AUDIENCE=https://your-api
 
 ---
 
-## Deploy
+## Testing
 
-**Frontend:** `cd frontend && vercel --prod`
+```bash
+# Backend (includes integration tests with Testcontainers)
+dotnet test
 
-**Backend:** `railway up`
+# Frontend
+cd frontend && npm test
+```
 
-**Database:** Run migrations: `dotnet ef database update --connection "your-connection-string"`
+**Test coverage includes:**
+- Domain unit tests (state machines, business rules)
+- Integration tests with real PostgreSQL (Testcontainers)
+- Concurrency tests (race conditions on shift claiming)
+- Multi-tenancy isolation tests (no cross-tenant data leakage)
+- Authentication boundary tests
 
 ---
 
-## Tests
+## Deployment
 
+**Frontend:**
 ```bash
-dotnet test             # Backend
-cd frontend && npm test # Frontend
+cd frontend && vercel --prod
+```
+
+**Backend:**
+```bash
+railway up
+```
+
+**Database migrations:**
+```bash
+dotnet ef database update --connection "your-connection-string"
 ```
 
 ---
 
-## Key decisions
+## Project Structure
 
-- **Vertical slices** — Each feature is a folder, not scattered across layers
-- **Result\<T\>** — No exceptions for control flow. Errors are explicit.
-- **Concurrency tokens** — Two casuals claim the last spot simultaneously? One wins, one gets a clean error.
-- **SMS-first for casuals** — No app, no friction. Click the link, claim the shift.
-- **Outbox for reliability** — SMS delivery survives crashes
+```
+src/
+  MulttenantSaas/           # Backend API
+    Features/               # Vertical slices by feature
+      Shifts/
+      Casuals/
+      Pools/
+    Domain/                 # Entities with encapsulated logic
+    Common/                 # Shared services, responses
+  frontend/                 # React SPA
+    pages/
+    components/
+    services/               # API client layer
+    types/                  # TypeScript types mirroring backend
+
+tests/
+  MulttenantSaas.Tests/
+    Domain/                 # Unit tests
+    Integration/
+      Tier1_Critical/       # Concurrency, auth, multi-tenancy
+      Tier2_Contract/       # HTTP contract tests
+```
 
 ---
 

@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main, integration/frontend-backend]
+  pull_request:
+    branches: [main]
+
+env:
+  DOTNET_VERSION: "8.0.x"
+  NODE_VERSION: "20"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: shiftdrop_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      # Backend
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Run tests with coverage
+        run: |
+          dotnet test --no-build --configuration Release \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./coverage \
+            --logger "trx;LogFileName=test-results.trx"
+        env:
+          ConnectionStrings__DefaultConnection: "Host=localhost;Database=shiftdrop_test;Username=postgres;Password=postgres"
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          directory: ./coverage
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      # Frontend
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Type check frontend
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Run frontend tests
+        working-directory: frontend
+        run: npm test -- --run
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: |
+            coverage/
+            frontend/coverage/
+          retention-days: 30

@@ -1,0 +1,39 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.vs
+.vscode
+.idea
+*.user
+*.suo
+
+# Build outputs
+bin/
+obj/
+out/
+
+# Tests
+**/Tests/
+**/*.Tests/
+MulttenantSaas.Tests/
+coverage/
+
+# Frontend (built separately)
+frontend/
+src/frontend/
+
+# Documentation
+docs/
+*.md
+
+# Local config
+appsettings.Development.json
+.env*
+*.local
+
+# Docker
+Dockerfile*
+docker-compose*
+.dockerignore
