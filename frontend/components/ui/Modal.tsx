@@ -10,9 +10,19 @@ interface ModalProps {
   maxWidth?: string;
   /** Show close button in header */
   showCloseButton?: boolean;
+  /** Disable auto-focus on first input (useful when first input is date/time on iOS) */
+  noAutoFocus?: boolean;
 }
 
-export function Modal({ isOpen, onClose, title, children, maxWidth = "max-w-md", showCloseButton = true }: ModalProps) {
+export function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+  maxWidth = "max-w-md",
+  showCloseButton = true,
+  noAutoFocus = false,
+}: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Handle escape key
@@ -31,7 +41,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = "max-w-md",
 
   // Focus trap - focus autoFocus element or first input on open
   useEffect(() => {
-    if (!isOpen || !panelRef.current) return;
+    if (!isOpen || !panelRef.current || noAutoFocus) return;
 
     // Prefer element with autoFocus, then first input, then first focusable
     const autoFocusElement = panelRef.current.querySelector<HTMLElement>("[autofocus]");
@@ -50,7 +60,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = "max-w-md",
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
     );
     focusableElements[0]?.focus();
-  }, [isOpen]);
+  }, [isOpen, noAutoFocus]);
 
   if (!isOpen) return null;
 

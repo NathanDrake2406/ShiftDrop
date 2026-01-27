@@ -9,7 +9,7 @@ interface TimeInputProps {
 
 /**
  * Custom time input with dropdowns for consistent UX across all browsers.
- * Uses 24-hour format.
+ * Uses 24-hour format. Overlays select on centered display text for iOS compatibility.
  */
 export const TimeInput: React.FC<TimeInputProps> = ({ value, onChange, size = "default", className = "" }) => {
   const parts = value ? value.split(":").map(Number) : [9, 0];
@@ -26,21 +26,27 @@ export const TimeInput: React.FC<TimeInputProps> = ({ value, onChange, size = "d
 
   const isCompact = size === "compact";
 
-  // Shell: flex container that centers the select
   const shellClass = isCompact
-    ? "h-8 w-14 border dark:border-slate-600 rounded-md bg-slate-50 dark:bg-slate-700 flex items-center justify-center"
-    : "ui-input-shell w-16 flex items-center justify-center";
+    ? "relative h-8 w-14 border dark:border-slate-600 rounded-md bg-slate-50 dark:bg-slate-700"
+    : "relative h-11 w-16 border border-slate-200 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700";
 
-  // Select: width auto so it sizes to content, centered by parent flex
-  const selectClass = isCompact
-    ? "bg-transparent text-slate-900 dark:text-white outline-none text-sm appearance-none cursor-pointer text-center"
-    : "bg-transparent text-slate-900 dark:text-white outline-none appearance-none cursor-pointer text-center";
+  const displayClass = isCompact
+    ? "absolute inset-0 flex items-center justify-center text-sm text-slate-900 dark:text-white pointer-events-none"
+    : "absolute inset-0 flex items-center justify-center text-base text-slate-900 dark:text-white pointer-events-none";
+
+  const selectClass = "absolute inset-0 w-full h-full opacity-0 cursor-pointer";
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       {/* Hour (0-23) */}
       <div className={shellClass}>
-        <select value={hours} onChange={(e) => handleHourChange(Number(e.target.value))} className={selectClass}>
+        <span className={displayClass}>{String(hours).padStart(2, "0")}</span>
+        <select
+          value={hours}
+          onChange={(e) => handleHourChange(Number(e.target.value))}
+          className={selectClass}
+          aria-label="Hour"
+        >
           {Array.from({ length: 24 }, (_, i) => i).map((h) => (
             <option key={h} value={h}>
               {String(h).padStart(2, "0")}
@@ -53,7 +59,13 @@ export const TimeInput: React.FC<TimeInputProps> = ({ value, onChange, size = "d
 
       {/* Minute (5-min increments) */}
       <div className={shellClass}>
-        <select value={minutes} onChange={(e) => handleMinuteChange(Number(e.target.value))} className={selectClass}>
+        <span className={displayClass}>{String(minutes).padStart(2, "0")}</span>
+        <select
+          value={minutes}
+          onChange={(e) => handleMinuteChange(Number(e.target.value))}
+          className={selectClass}
+          aria-label="Minute"
+        >
           {Array.from({ length: 12 }, (_, i) => i * 5).map((m) => (
             <option key={m} value={m}>
               {String(m).padStart(2, "0")}

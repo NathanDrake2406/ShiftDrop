@@ -592,7 +592,7 @@ export const PoolDetails: React.FC = () => {
       )}
 
       {/* Create Shift Modal */}
-      <Modal isOpen={isCreating} onClose={() => setIsCreating(false)} title="New Shift">
+      <Modal isOpen={isCreating} onClose={() => setIsCreating(false)} title="New Shift" noAutoFocus>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Start</label>
