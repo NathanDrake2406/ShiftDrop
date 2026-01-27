@@ -25,15 +25,19 @@ export const TimeInput: React.FC<TimeInputProps> = ({ value, onChange, size = "d
   };
 
   const isCompact = size === "compact";
+
+  // Shell: flex container that centers the select
   const shellClass = isCompact
-    ? "h-8 w-12 border dark:border-slate-600 rounded-md bg-slate-50 dark:bg-slate-700 px-0 flex items-center justify-center"
-    : "ui-input-shell w-16 px-0 justify-center";
+    ? "h-8 w-14 border dark:border-slate-600 rounded-md bg-slate-50 dark:bg-slate-700 flex items-center justify-center"
+    : "ui-input-shell w-16 flex items-center justify-center";
+
+  // Select: width auto so it sizes to content, centered by parent flex
   const selectClass = isCompact
-    ? "w-full h-full bg-transparent text-slate-900 dark:text-white outline-none text-sm text-center appearance-none cursor-pointer"
-    : "ui-input-field text-center appearance-none cursor-pointer";
+    ? "bg-transparent text-slate-900 dark:text-white outline-none text-sm appearance-none cursor-pointer text-center"
+    : "bg-transparent text-slate-900 dark:text-white outline-none appearance-none cursor-pointer text-center";
 
   return (
-    <div className={`flex items-center gap-1 ${className}`}>
+    <div className={`flex items-center gap-2 ${className}`}>
       {/* Hour (0-23) */}
       <div className={shellClass}>
         <select value={hours} onChange={(e) => handleHourChange(Number(e.target.value))} className={selectClass}>
@@ -45,7 +49,7 @@ export const TimeInput: React.FC<TimeInputProps> = ({ value, onChange, size = "d
         </select>
       </div>
 
-      <span className={`text-slate-400 font-medium ${isCompact ? "text-sm" : ""}`}>:</span>
+      <span className={`text-slate-400 font-bold ${isCompact ? "text-sm" : "text-lg"}`}>:</span>
 
       {/* Minute (5-min increments) */}
       <div className={shellClass}>
