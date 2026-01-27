@@ -77,6 +77,7 @@ flowchart LR
 | **Concurrency tokens** | Two casuals claim the last spot? One wins, one gets a clean 409 error. |
 | **SMS-first for casuals** | No app download, no account creation. Click link, claim shift. |
 | **Multi-tenancy** | Pools isolate data. Tests verify no cross-tenant leakage. |
+| **Authorization-transparent 404s** | Unauthorized cross-tenant access returns 404, not 403. Prevents resource enumeration. |
 
 ### Domain Model
 
