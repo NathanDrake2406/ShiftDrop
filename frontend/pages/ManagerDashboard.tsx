@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Layout } from "../components/ui/Layout";
 import { Button } from "../components/ui/Button";
 import { PoolCardSkeleton } from "../components/ui/Skeleton";
@@ -6,48 +6,28 @@ import { useNavigate } from "react-router-dom";
 import { Plus, X, ChevronRight, Trash2 } from "lucide-react";
 import { useAuth } from "../auth";
 import { useDemo } from "../contexts/DemoContext";
-import * as managerApi from "../services/managerApi";
+import { usePools, useCreatePool, useDeletePool } from "../hooks/useManagerQueries";
 import type { PoolResponse } from "../types/api";
 import { ApiError } from "../types/api";
 
 export const ManagerDashboard: React.FC = () => {
-  const { getAccessToken, logout, user } = useAuth();
+  const { logout, user } = useAuth();
   const { demoMode, demoManagerSignedIn } = useDemo();
-  const [pools, setPools] = useState<PoolResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  // React Query hooks - data fetching is now automatic
+  const { data: pools = [], isLoading: loading, error: queryError } = usePools();
+  const createPoolMutation = useCreatePool();
+  const deletePoolMutation = useDeletePool();
+
+  // Local UI state only
   const [isCreatingPool, setIsCreatingPool] = useState(false);
   const [poolName, setPoolName] = useState("");
   const [poolError, setPoolError] = useState<string | null>(null);
-  const [isSavingPool, setIsSavingPool] = useState(false);
   const [deletingPool, setDeletingPool] = useState<PoolResponse | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    const fetchPools = async () => {
-      try {
-        const token = await getAccessToken();
-        if (!token) {
-          setError("Unable to authenticate. Please try logging in again.");
-          setLoading(false);
-          return;
-        }
-        const data = await managerApi.getPools(token);
-        setPools(data);
-        setError(null);
-      } catch (err) {
-        if (err instanceof ApiError) {
-          setError(err.message);
-        } else {
-          setError("Failed to load pools");
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchPools();
-  }, [getAccessToken]);
+  // Derive error from query or mutation
+  const error = queryError instanceof ApiError ? queryError.message : queryError ? "Failed to load pools" : null;
 
   const openCreatePool = () => {
     setPoolName("");
@@ -68,13 +48,8 @@ export const ManagerDashboard: React.FC = () => {
       return;
     }
 
-    setIsSavingPool(true);
     try {
-      const token = await getAccessToken();
-      if (!token) return;
-      await managerApi.createPool(trimmedName, token);
-      const data = await managerApi.getPools(token);
-      setPools(data);
+      await createPoolMutation.mutateAsync(trimmedName);
       closeCreatePool();
     } catch (err) {
       if (err instanceof ApiError) {
@@ -82,28 +57,17 @@ export const ManagerDashboard: React.FC = () => {
       } else {
         setPoolError("Failed to create pool");
       }
-    } finally {
-      setIsSavingPool(false);
     }
   };
 
   const handleDeletePool = async () => {
     if (!deletingPool) return;
-    setIsDeleting(true);
     try {
-      const token = await getAccessToken();
-      if (!token) return;
-      await managerApi.deletePool(deletingPool.id, token);
-      setPools((prev) => prev.filter((p) => p.id !== deletingPool.id));
+      await deletePoolMutation.mutateAsync(deletingPool.id);
       setDeletingPool(null);
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Failed to delete pool");
-      }
-    } finally {
-      setIsDeleting(false);
+      // Error will be shown via toast or could add local error state
+      setDeletingPool(null);
     }
   };
 
@@ -220,7 +184,7 @@ export const ManagerDashboard: React.FC = () => {
                 <Button type="button" variant="secondary" className="flex-1" onClick={closeCreatePool}>
                   Cancel
                 </Button>
-                <Button type="submit" className="flex-1" isLoading={isSavingPool}>
+                <Button type="submit" className="flex-1" isLoading={createPoolMutation.isPending}>
                   Create Pool
                 </Button>
               </div>
@@ -252,7 +216,7 @@ export const ManagerDashboard: React.FC = () => {
                 type="button"
                 variant="danger"
                 className="flex-1"
-                isLoading={isDeleting}
+                isLoading={deletePoolMutation.isPending}
                 onClick={handleDeletePool}
               >
                 Delete Pool

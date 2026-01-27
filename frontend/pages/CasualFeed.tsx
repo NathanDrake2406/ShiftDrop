@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { Layout } from "../components/ui/Layout";
 import { Button } from "../components/ui/Button";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
@@ -6,7 +6,7 @@ import { ShiftCard } from "../components/ShiftCard";
 import { ShiftCardSkeleton } from "../components/ui/Skeleton";
 import { formatDateDMY } from "../utils/date";
 import { useToast } from "../contexts/ToastContext";
-import * as casualApi from "../services/casualApi";
+import { useAvailableShifts, useMyShifts, useClaimShift, useBailShift } from "../hooks/useCasualQueries";
 import type { ShiftResponse } from "../types/api";
 import { ApiError } from "../types/api";
 
@@ -17,43 +17,31 @@ interface CasualFeedProps {
 
 export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout }) => {
   const { showToast } = useToast();
-  const [availableShifts, setAvailableShifts] = useState<ShiftResponse[]>([]);
-  const [myShifts, setMyShifts] = useState<ShiftResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [claimingId, setClaimingId] = useState<string | null>(null);
+
+  // React Query hooks - data fetching is automatic with caching
+  const {
+    data: availableData,
+    isLoading: loadingAvailable,
+    error: availableError,
+  } = useAvailableShifts(currentUser.phoneNumber);
+  const {
+    data: myShifts = [],
+    isLoading: loadingMyShifts,
+    error: myShiftsError,
+  } = useMyShifts(currentUser.phoneNumber);
+
+  const claimMutation = useClaimShift(currentUser.phoneNumber);
+  const bailMutation = useBailShift(currentUser.phoneNumber);
+
+  // Derive state from queries
+  const availableShifts = availableData?.availableShifts ?? [];
+  const loading = loadingAvailable || loadingMyShifts;
+  const queryError = availableError || myShiftsError;
+  const error = queryError instanceof ApiError ? queryError.message : queryError ? "Failed to load shifts" : null;
 
   // Confirmation Modal State
   const [confirmingShift, setConfirmingShift] = useState<ShiftResponse | null>(null);
   const [confirmingBailShift, setConfirmingBailShift] = useState<ShiftResponse | null>(null);
-  const [isBailing, setIsBailing] = useState(false);
-  const [isClaiming, setIsClaiming] = useState(false);
-
-  const loadShifts = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      // Fetch both available shifts and claimed shifts in parallel
-      const [availableData, claimedData] = await Promise.all([
-        casualApi.getAvailableShifts(currentUser.phoneNumber),
-        casualApi.getMyShifts(currentUser.phoneNumber),
-      ]);
-      setAvailableShifts(availableData.availableShifts);
-      setMyShifts(claimedData);
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Failed to load shifts");
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [currentUser.phoneNumber]);
-
-  useEffect(() => {
-    loadShifts();
-  }, [loadShifts]);
 
   const handleClaimClick = (shiftId: string) => {
     const shift = availableShifts.find((s) => s.id === shiftId);
@@ -64,13 +52,10 @@ export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout })
 
   const confirmClaim = async () => {
     if (!confirmingShift) return;
-    const shiftId = confirmingShift.id;
-    setIsClaiming(true);
     try {
-      await casualApi.claimShift(shiftId, currentUser.phoneNumber);
+      await claimMutation.mutateAsync(confirmingShift.id);
       showToast("Shift claimed! You're on the roster.", "success");
       setConfirmingShift(null);
-      await loadShifts();
     } catch (err) {
       setConfirmingShift(null);
       if (err instanceof ApiError) {
@@ -82,9 +67,6 @@ export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout })
       } else {
         showToast("Failed to claim shift", "error");
       }
-    } finally {
-      setClaimingId(null);
-      setIsClaiming(false);
     }
   };
 
@@ -97,12 +79,10 @@ export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout })
 
   const confirmBail = async () => {
     if (!confirmingBailShift) return;
-    setIsBailing(true);
     try {
-      await casualApi.bailShift(confirmingBailShift.id, currentUser.phoneNumber);
+      await bailMutation.mutateAsync(confirmingBailShift.id);
       showToast("You've bailed on the shift", "info");
       setConfirmingBailShift(null);
-      await loadShifts();
     } catch (err) {
       setConfirmingBailShift(null);
       if (err instanceof ApiError) {
@@ -110,8 +90,6 @@ export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout })
       } else {
         showToast("Could not bail from shift", "error");
       }
-    } finally {
-      setIsBailing(false);
     }
   };
 
@@ -136,9 +114,6 @@ export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout })
       {error && (
         <div className="text-center p-4 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg mb-4">
           {error}
-          <Button variant="secondary" size="sm" className="ml-4" onClick={loadShifts}>
-            Retry
-          </Button>
         </div>
       )}
 
@@ -156,6 +131,7 @@ export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout })
                     userType="casual"
                     userClaimStatus="Claimed"
                     onBail={handleBail}
+                    isLoading={bailMutation.isPending && confirmingBailShift?.id === shift.id}
                   />
                 ))}
               </div>
@@ -177,7 +153,7 @@ export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout })
                     shift={shift}
                     userType="casual"
                     onClaim={handleClaimClick}
-                    isLoading={claimingId === shift.id}
+                    isLoading={claimMutation.isPending && confirmingShift?.id === shift.id}
                   />
                 ))}
               </div>
@@ -195,7 +171,7 @@ export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout })
         message={`Are you sure you want to take this shift on ${confirmingShift ? formatDateDMY(new Date(confirmingShift.startsAt)) : ""}?`}
         confirmLabel="Yes, Claim"
         cancelLabel="No, Cancel"
-        isLoading={isClaiming}
+        isLoading={claimMutation.isPending}
       />
 
       {/* Confirm Bail Dialog */}
@@ -208,7 +184,7 @@ export const CasualFeed: React.FC<CasualFeedProps> = ({ currentUser, onLogout })
         confirmLabel="Bail"
         cancelLabel="Keep Shift"
         isDanger
-        isLoading={isBailing}
+        isLoading={bailMutation.isPending}
       />
     </Layout>
   );

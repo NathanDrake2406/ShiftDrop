@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "../components/ui/Layout";
 import { Button } from "../components/ui/Button";
@@ -11,39 +11,77 @@ import { TeamTab } from "../components/TeamTab";
 import { AvailabilityEditor } from "../components/AvailabilityEditor";
 import { Plus, Trash2, RefreshCw, Calendar, BarChart3, Users, CheckCircle, Clock } from "lucide-react";
 import { StatsCard } from "../components/ui/StatsCard";
-import { useAuth } from "../auth";
 import { useToast } from "../contexts/ToastContext";
 import { useDemo } from "../contexts/DemoContext";
-import * as managerApi from "../services/managerApi";
-import type {
-  PoolDetailResponse,
-  ShiftDetailResponse,
-  CasualResponse,
-  PoolAdminResponse,
-  AvailabilitySlot,
-  PoolStatsResponse,
-} from "../types/api";
+import {
+  usePool,
+  usePoolShifts,
+  usePoolStats,
+  usePoolAdmins,
+  useCasualAvailability,
+  useAddCasual,
+  useRemoveCasual,
+  usePostShift,
+  useCancelShift,
+  useReleaseCasual,
+  useResendInvite,
+  useResendShiftNotification,
+  useInviteAdmin,
+  useRemoveAdmin,
+  useSetCasualAvailability,
+} from "../hooks/useManagerQueries";
+import type { CasualResponse } from "../types/api";
 import { ApiError } from "../types/api";
 
 export const PoolDetails: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getAccessToken } = useAuth();
   const { showToast } = useToast();
   const { demoMode } = useDemo();
 
-  const [pool, setPool] = useState<PoolDetailResponse | null>(null);
-  const [shifts, setShifts] = useState<ShiftDetailResponse[]>([]);
-  const [admins, setAdmins] = useState<PoolAdminResponse[]>([]);
-  const [stats, setStats] = useState<PoolStatsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"shifts" | "casuals" | "team">("shifts");
+  // React Query hooks for data fetching
+  const { data: pool, isLoading: loadingPool, error: poolError } = usePool(id);
+  const { data: shifts = [], isLoading: loadingShifts, error: shiftsError } = usePoolShifts(id);
+  const { data: admins = [] } = usePoolAdmins(id);
+  const { data: stats } = usePoolStats(id);
 
-  // Availability state
+  // Derive loading and error states
+  const loading = loadingPool || loadingShifts;
+  const queryError = poolError || shiftsError;
+  const error = queryError instanceof ApiError ? queryError.message : queryError ? "Failed to load pool details" : null;
+
+  // Mutations
+  const addCasualMutation = useAddCasual(id ?? "");
+  const removeCasualMutation = useRemoveCasual(id ?? "");
+  const postShiftMutation = usePostShift(id ?? "");
+  const cancelShiftMutation = useCancelShift(id ?? "");
+  const releaseCasualMutation = useReleaseCasual(id ?? "");
+  const resendInviteMutation = useResendInvite(id ?? "");
+  const resendShiftMutation = useResendShiftNotification(id ?? "");
+  const inviteAdminMutation = useInviteAdmin(id ?? "");
+  const removeAdminMutation = useRemoveAdmin(id ?? "");
+
+  // Local UI state
+  const [activeTab, setActiveTab] = useState<"shifts" | "casuals" | "team">("shifts");
   const [selectedCasual, setSelectedCasual] = useState<CasualResponse | null>(null);
-  const [casualAvailability, setCasualAvailability] = useState<AvailabilitySlot[]>([]);
-  const [loadingAvailability, setLoadingAvailability] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isAddingCasual, setIsAddingCasual] = useState(false);
+  const [casualForm, setCasualForm] = useState({ name: "", phone: "" });
+  const [casualErrors, setCasualErrors] = useState<{ name?: string; phone?: string }>({});
+  const [confirmAction, setConfirmAction] = useState<null | {
+    type: "cancelShift" | "removeCasual" | "releaseCasual";
+    shiftId?: string;
+    casualId?: string;
+  }>(null);
+  const [resendingInvite, setResendingInvite] = useState<string | null>(null);
+  const [resendingShiftNotification, setResendingShiftNotification] = useState<string | null>(null);
+
+  // Availability query (only when a casual is selected)
+  const { data: casualAvailability = [], isLoading: loadingAvailability } = useCasualAvailability(
+    id,
+    selectedCasual?.id,
+  );
+  const setAvailabilityMutation = useSetCasualAvailability(id ?? "", selectedCasual?.id ?? "");
 
   // Create Shift State
   const toDateInput = (date: Date) => {
@@ -125,115 +163,55 @@ export const PoolDetails: React.FC = () => {
     };
   };
 
-  const [isCreating, setIsCreating] = useState(false);
-  const [isAddingCasual, setIsAddingCasual] = useState(false);
-  const [isSavingCasual, setIsSavingCasual] = useState(false);
-  const [casualForm, setCasualForm] = useState({ name: "", phone: "" });
-  const [casualErrors, setCasualErrors] = useState<{ name?: string; phone?: string }>({});
-  const [confirmAction, setConfirmAction] = useState<null | {
-    type: "cancelShift" | "removeCasual" | "releaseCasual";
-    shiftId?: string;
-    casualId?: string;
-  }>(null);
-  const [isConfirmingAction, setIsConfirmingAction] = useState(false);
-  const [resendingInvite, setResendingInvite] = useState<string | null>(null);
-  const [resendingShiftNotification, setResendingShiftNotification] = useState<string | null>(null);
-
   const [shiftForm, setShiftForm] = useState(buildDefaultShiftForm());
-
-  const loadData = useCallback(async () => {
-    if (!id) {
-      setPool(null);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const token = await getAccessToken();
-      if (!token) {
-        setError("Unable to authenticate. Please try logging in again.");
-        setLoading(false);
-        return;
-      }
-
-      // Core data - failure means page can't load
-      const [poolData, shiftsData, adminsData] = await Promise.all([
-        managerApi.getPool(id, token),
-        managerApi.getPoolShifts(id, token),
-        managerApi.getPoolAdmins(id, token),
-      ]);
-
-      setPool(poolData);
-      setShifts(shiftsData);
-      setAdmins(adminsData);
-
-      // Stats are supplementary - don't fail the page if stats fail
-      try {
-        const statsData = await managerApi.getPoolStats(id, token);
-        setStats(statsData);
-      } catch {
-        setStats(null);
-      }
-      setError(null);
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Failed to load pool details");
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [id, getAccessToken]);
 
   // Admin handlers
   const handleInviteAdmin = async (phoneNumber: string, name: string) => {
     if (!id) return;
-    const token = await getAccessToken();
-    if (!token) throw new Error("Unable to authenticate");
-    await managerApi.inviteAdmin(id, { phoneNumber, name }, token);
-    showToast(`Invite sent to ${phoneNumber}`, "success");
-    loadData();
+    try {
+      await inviteAdminMutation.mutateAsync({ phoneNumber, name });
+      showToast(`Invite sent to ${phoneNumber}`, "success");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        showToast(err.message, "error");
+      } else {
+        showToast("Failed to invite admin", "error");
+      }
+    }
   };
 
   const handleRemoveAdmin = async (adminId: string) => {
     if (!id) return;
-    const token = await getAccessToken();
-    if (!token) throw new Error("Unable to authenticate");
-    await managerApi.removeAdmin(id, adminId, token);
-    showToast("Admin removed", "success");
-    loadData();
-  };
-
-  // Availability handlers
-  const handleOpenAvailability = async (casual: CasualResponse) => {
-    if (!id) return;
-    setSelectedCasual(casual);
-    setLoadingAvailability(true);
     try {
-      const token = await getAccessToken();
-      if (!token) return;
-      const availability = await managerApi.getCasualAvailability(id, casual.id, token);
-      setCasualAvailability(availability);
-    } catch {
-      setCasualAvailability([]);
-    } finally {
-      setLoadingAvailability(false);
+      await removeAdminMutation.mutateAsync(adminId);
+      showToast("Admin removed", "success");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        showToast(err.message, "error");
+      } else {
+        showToast("Failed to remove admin", "error");
+      }
     }
   };
 
-  const handleSaveAvailability = async (availability: AvailabilitySlot[]) => {
-    if (!id || !selectedCasual) return;
-    const token = await getAccessToken();
-    if (!token) throw new Error("Unable to authenticate");
-    await managerApi.setCasualAvailability(id, selectedCasual.id, availability, token);
-    showToast("Availability saved", "success");
-    setSelectedCasual(null);
+  // Availability handlers
+  const handleOpenAvailability = (casual: CasualResponse) => {
+    setSelectedCasual(casual);
   };
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const handleSaveAvailability = async (availability: typeof casualAvailability) => {
+    try {
+      await setAvailabilityMutation.mutateAsync(availability);
+      showToast("Availability saved", "success");
+      setSelectedCasual(null);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        showToast(err.message, "error");
+      } else {
+        showToast("Failed to save availability", "error");
+      }
+    }
+  };
 
   const handlePostShift = async () => {
     if (!id) return;
@@ -269,23 +247,14 @@ export const PoolDetails: React.FC = () => {
     }
 
     try {
-      const token = await getAccessToken();
-      if (!token) return;
-
-      await managerApi.postShift(
-        id,
-        {
-          startsAt: startDate.toISOString(),
-          endsAt: endDate.toISOString(),
-          spotsNeeded: shiftForm.spotsNeeded,
-        },
-        token,
-      );
-
+      await postShiftMutation.mutateAsync({
+        startsAt: startDate.toISOString(),
+        endsAt: endDate.toISOString(),
+        spotsNeeded: shiftForm.spotsNeeded,
+      });
       setIsCreating(false);
       setShiftForm(buildDefaultShiftForm());
       showToast("Shift posted successfully!", "success");
-      loadData();
     } catch (err) {
       if (err instanceof ApiError) {
         showToast(err.message, "error");
@@ -338,23 +307,16 @@ export const PoolDetails: React.FC = () => {
       return;
     }
 
-    setIsSavingCasual(true);
     try {
-      const token = await getAccessToken();
-      if (!token) return;
-
-      await managerApi.addCasual(id, name, phone, token);
+      await addCasualMutation.mutateAsync({ name, phoneNumber: phone });
       closeAddCasual();
       showToast(`${name} added to pool`, "success");
-      loadData();
     } catch (err) {
       if (err instanceof ApiError) {
         setCasualErrors({ phone: err.message });
       } else {
         setCasualErrors({ phone: "Failed to add casual" });
       }
-    } finally {
-      setIsSavingCasual(false);
     }
   };
 
@@ -370,11 +332,8 @@ export const PoolDetails: React.FC = () => {
     if (!id) return;
     setResendingInvite(casual.id);
     try {
-      const token = await getAccessToken();
-      if (!token) return;
-      await managerApi.resendInvite(id, casual.id, token);
+      await resendInviteMutation.mutateAsync(casual.id);
       showToast(`Invite resent to ${casual.name}`, "success");
-      // No reload needed - resending doesn't change displayed data
     } catch (err) {
       if (err instanceof ApiError) {
         showToast(err.message, "error");
@@ -390,9 +349,7 @@ export const PoolDetails: React.FC = () => {
     if (!id) return;
     setResendingShiftNotification(shiftId);
     try {
-      const token = await getAccessToken();
-      if (!token) return;
-      const result = await managerApi.resendShiftNotification(id, shiftId, token);
+      const result = await resendShiftMutation.mutateAsync(shiftId);
       showToast(result.message, "success");
     } catch (err) {
       if (err instanceof ApiError) {
@@ -431,26 +388,27 @@ export const PoolDetails: React.FC = () => {
     }
   })();
 
+  const isConfirmingAction =
+    cancelShiftMutation.isPending || removeCasualMutation.isPending || releaseCasualMutation.isPending;
+
   const handleConfirmAction = async () => {
     if (!id || !confirmAction) return;
-    setIsConfirmingAction(true);
     try {
-      const token = await getAccessToken();
-      if (!token) return;
-
       if (confirmAction.type === "cancelShift" && confirmAction.shiftId) {
-        await managerApi.cancelShift(id, confirmAction.shiftId, token);
+        await cancelShiftMutation.mutateAsync(confirmAction.shiftId);
         showToast("Shift cancelled", "success");
       }
       if (confirmAction.type === "removeCasual" && confirmAction.casualId) {
-        await managerApi.removeCasual(id, confirmAction.casualId, token);
+        await removeCasualMutation.mutateAsync(confirmAction.casualId);
         showToast("Casual removed from pool", "success");
       }
       if (confirmAction.type === "releaseCasual" && confirmAction.shiftId && confirmAction.casualId) {
-        await managerApi.releaseCasual(id, confirmAction.shiftId, confirmAction.casualId, token);
+        await releaseCasualMutation.mutateAsync({
+          shiftId: confirmAction.shiftId,
+          casualId: confirmAction.casualId,
+        });
         showToast("Worker released from shift", "success");
       }
-      await loadData();
     } catch (err) {
       if (err instanceof ApiError) {
         showToast(err.message, "error");
@@ -458,7 +416,6 @@ export const PoolDetails: React.FC = () => {
         showToast("Action failed", "error");
       }
     } finally {
-      setIsConfirmingAction(false);
       setConfirmAction(null);
     }
   };
@@ -702,7 +659,7 @@ export const PoolDetails: React.FC = () => {
               />
             </div>
           </div>
-          <Button className="w-full mt-2" onClick={handlePostShift}>
+          <Button className="w-full mt-2" onClick={handlePostShift} isLoading={postShiftMutation.isPending}>
             Post Shift
           </Button>
         </div>
@@ -752,7 +709,7 @@ export const PoolDetails: React.FC = () => {
             <Button type="button" variant="secondary" className="flex-1" onClick={closeAddCasual}>
               Cancel
             </Button>
-            <Button type="submit" className="flex-1" isLoading={isSavingCasual}>
+            <Button type="submit" className="flex-1" isLoading={addCasualMutation.isPending}>
               Add Casual
             </Button>
           </div>
