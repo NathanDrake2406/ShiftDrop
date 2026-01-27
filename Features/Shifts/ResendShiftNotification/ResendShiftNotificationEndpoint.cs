@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using ShiftDrop.Common;
 using ShiftDrop.Domain;
 
 namespace ShiftDrop.Features.Shifts.ResendShiftNotification;
@@ -24,19 +25,13 @@ public static class ResendShiftNotificationEndpoint
         if (string.IsNullOrEmpty(managerId))
             return Results.Unauthorized();
 
-        var pool = await db.Pools
-            .Include(p => p.Casuals)
-                .ThenInclude(c => c.Availability)
-            .Include(p => p.Shifts)
-                .ThenInclude(s => s.Claims)
-            .Include(p => p.Admins)
-            .FirstOrDefaultAsync(p => p.Id == poolId, ct);
-
+        var pool = await db.GetAuthorizedPoolAsync(
+            poolId, managerId, ct,
+            includeCasuals: true,
+            includeShifts: true,
+            includeCasualAvailability: true);
         if (pool == null)
             return Results.NotFound(new { error = "Pool not found" });
-
-        if (!pool.IsAuthorized(managerId))
-            return Results.Forbid();
 
         var shift = pool.Shifts.FirstOrDefault(s => s.Id == shiftId);
         if (shift == null)

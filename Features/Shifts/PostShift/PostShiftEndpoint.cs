@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
+using ShiftDrop.Common;
 using ShiftDrop.Common.Responses;
 using ShiftDrop.Domain;
 
@@ -25,18 +25,13 @@ public static class PostShiftEndpoint
         if (string.IsNullOrEmpty(managerId))
             return Results.Unauthorized();
 
-        var pool = await db.Pools
-            .Include(p => p.Casuals)
-                .ThenInclude(c => c.Availability)
-            .Include(p => p.Shifts)
-            .Include(p => p.Admins)
-            .FirstOrDefaultAsync(p => p.Id == poolId, ct);
-
+        var pool = await db.GetAuthorizedPoolAsync(
+            poolId, managerId, ct,
+            includeCasuals: true,
+            includeShifts: true,
+            includeCasualAvailability: true);
         if (pool == null)
             return Results.NotFound();
-
-        if (!pool.IsAuthorized(managerId))
-            return Results.Forbid();
 
         var result = pool.PostShift(request.StartsAt, request.EndsAt, request.SpotsNeeded, timeProvider);
         if (result.IsFailure)

@@ -114,7 +114,7 @@ public class GetPoolStatsTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task GetPoolStats_WhenNotAuthorized_Returns403()
+    public async Task GetPoolStats_WhenNotAuthorized_Returns404()
     {
         // Arrange
         var scenario = await SeedScenarioAsync(ManagerId, "Stats Pool");
@@ -123,8 +123,8 @@ public class GetPoolStatsTests : IntegrationTestBase
         // Act
         var response = await otherManagerClient.GetAsync($"/pools/{scenario.Pool.Id}/stats");
 
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        // Assert: 404 (not 403) to avoid leaking resource existence
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]

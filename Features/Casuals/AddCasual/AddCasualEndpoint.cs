@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
+using ShiftDrop.Common;
 using ShiftDrop.Common.Responses;
 using ShiftDrop.Domain;
 
@@ -25,16 +25,9 @@ public static class AddCasualEndpoint
         if (string.IsNullOrEmpty(managerId))
             return Results.Unauthorized();
 
-        var pool = await db.Pools
-            .Include(p => p.Casuals)
-            .Include(p => p.Admins)
-            .FirstOrDefaultAsync(p => p.Id == poolId, ct);
-
+        var pool = await db.GetAuthorizedPoolAsync(poolId, managerId, ct, includeCasuals: true);
         if (pool == null)
             return Results.NotFound();
-
-        if (!pool.IsAuthorized(managerId))
-            return Results.Forbid();
 
         var result = pool.AddCasual(request.Name, request.PhoneNumber, timeProvider);
         if (result.IsFailure)

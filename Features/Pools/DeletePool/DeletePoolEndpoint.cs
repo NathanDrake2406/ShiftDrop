@@ -20,15 +20,12 @@ public static class DeletePoolEndpoint
         if (string.IsNullOrEmpty(managerId))
             return Results.Unauthorized();
 
+        // Only the pool owner can delete (not 2ICs), so query by owner directly.
+        // Returns 404 for both "not found" and "not owner" to avoid leaking existence.
         var pool = await db.Pools
-            .FirstOrDefaultAsync(p => p.Id == poolId, ct);
-
+            .FirstOrDefaultAsync(p => p.Id == poolId && p.ManagerAuth0Id == managerId, ct);
         if (pool == null)
             return Results.NotFound();
-
-        // Only the pool owner can delete, not 2ICs
-        if (pool.ManagerAuth0Id != managerId)
-            return Results.Forbid();
 
         db.Pools.Remove(pool);
         await db.SaveChangesAsync(ct);

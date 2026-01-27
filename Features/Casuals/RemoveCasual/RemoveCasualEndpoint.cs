@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
+using ShiftDrop.Common;
 
 namespace ShiftDrop.Features.Casuals.RemoveCasual;
 
@@ -21,16 +21,9 @@ public static class RemoveCasualEndpoint
         if (string.IsNullOrEmpty(managerId))
             return Results.Unauthorized();
 
-        var pool = await db.Pools
-            .Include(p => p.Casuals)
-            .Include(p => p.Admins)
-            .FirstOrDefaultAsync(p => p.Id == poolId, ct);
-
+        var pool = await db.GetAuthorizedPoolAsync(poolId, managerId, ct, includeCasuals: true);
         if (pool == null)
             return Results.NotFound();
-
-        if (!pool.IsAuthorized(managerId))
-            return Results.Forbid();
 
         var casual = pool.Casuals.FirstOrDefault(c => c.Id == casualId);
         if (casual == null)

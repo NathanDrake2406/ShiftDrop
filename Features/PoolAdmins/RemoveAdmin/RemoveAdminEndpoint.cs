@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
+using ShiftDrop.Common;
 
 namespace ShiftDrop.Features.PoolAdmins.RemoveAdmin;
 
@@ -21,15 +21,9 @@ public static class RemoveAdminEndpoint
         if (string.IsNullOrEmpty(userId))
             return Results.Unauthorized();
 
-        var pool = await db.Pools
-            .Include(p => p.Admins)
-            .FirstOrDefaultAsync(p => p.Id == poolId, ct);
-
+        var pool = await db.GetAuthorizedPoolAsync(poolId, userId, ct);
         if (pool == null)
             return Results.NotFound();
-
-        if (!pool.IsAuthorized(userId))
-            return Results.Forbid();
 
         var result = pool.RemoveAdmin(adminId);
         if (result.IsFailure)

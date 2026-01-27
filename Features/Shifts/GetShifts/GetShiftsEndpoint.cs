@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using ShiftDrop.Common;
 using ShiftDrop.Common.Responses;
 
 namespace ShiftDrop.Features.Shifts.GetShifts;
@@ -21,15 +22,9 @@ public static class GetShiftsEndpoint
         if (string.IsNullOrEmpty(managerId))
             return Results.Unauthorized();
 
-        var pool = await db.Pools
-            .Include(p => p.Admins)
-            .FirstOrDefaultAsync(p => p.Id == poolId, ct);
-
+        var pool = await db.GetAuthorizedPoolAsync(poolId, managerId, ct);
         if (pool == null)
             return Results.NotFound();
-
-        if (!pool.IsAuthorized(managerId))
-            return Results.Forbid();
 
         var shifts = await db.Shifts
             .Where(s => s.PoolId == poolId)

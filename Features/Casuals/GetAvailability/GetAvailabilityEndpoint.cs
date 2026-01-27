@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
+using ShiftDrop.Common;
 
 namespace ShiftDrop.Features.Casuals.GetAvailability;
 
@@ -21,17 +21,9 @@ public static class GetAvailabilityEndpoint
         if (string.IsNullOrEmpty(userId))
             return Results.Unauthorized();
 
-        var pool = await db.Pools
-            .Include(p => p.Admins)
-            .Include(p => p.Casuals)
-                .ThenInclude(c => c.Availability)
-            .FirstOrDefaultAsync(p => p.Id == poolId, ct);
-
+        var pool = await db.GetAuthorizedPoolAsync(poolId, userId, ct, includeCasuals: true, includeCasualAvailability: true);
         if (pool == null)
             return Results.NotFound();
-
-        if (!pool.IsAuthorized(userId))
-            return Results.Forbid();
 
         var casual = pool.Casuals.FirstOrDefault(c => c.Id == casualId);
         if (casual == null)

@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using ShiftDrop.Common;
 using ShiftDrop.Common.Responses;
 using ShiftDrop.Domain;
 
@@ -25,15 +26,9 @@ public static class ResendInviteEndpoint
         if (string.IsNullOrEmpty(managerId))
             return Results.Unauthorized();
 
-        var pool = await db.Pools
-            .Include(p => p.Admins)
-            .FirstOrDefaultAsync(p => p.Id == poolId, ct);
-
+        var pool = await db.GetAuthorizedPoolAsync(poolId, managerId, ct);
         if (pool == null)
             return Results.NotFound();
-
-        if (!pool.IsAuthorized(managerId))
-            return Results.Forbid();
 
         var casual = await db.Casuals
             .Include(c => c.Pool)

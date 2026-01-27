@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
+using ShiftDrop.Common;
 using ShiftDrop.Common.Responses;
 using ShiftDrop.Domain;
 
@@ -25,15 +25,9 @@ public static class InviteAdminEndpoint
         if (string.IsNullOrEmpty(userId))
             return Results.Unauthorized();
 
-        var pool = await db.Pools
-            .Include(p => p.Admins)
-            .FirstOrDefaultAsync(p => p.Id == poolId, ct);
-
+        var pool = await db.GetAuthorizedPoolAsync(poolId, userId, ct);
         if (pool == null)
             return Results.NotFound();
-
-        if (!pool.IsAuthorized(userId))
-            return Results.Forbid();
 
         var result = pool.InviteAdmin(request.PhoneNumber, request.Name, timeProvider);
         if (result.IsFailure)
