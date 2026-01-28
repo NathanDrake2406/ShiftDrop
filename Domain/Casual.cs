@@ -174,6 +174,7 @@ public class Casual
     /// Checks if the casual is available for a shift at the given time.
     /// Returns true if: no availability set (default = available anytime) OR
     /// shift fits entirely within availability window for that day.
+    /// Supports overnight availability (e.g., 22:00-06:00 for nightfill).
     /// </summary>
     public bool IsAvailableFor(DateTime shiftStart, DateTime shiftEnd)
     {
@@ -188,9 +189,9 @@ public class Casual
         var shiftStartTime = TimeOnly.FromDateTime(shiftStart);
         var shiftEndTime = TimeOnly.FromDateTime(shiftEnd);
 
-        // Shift must fit entirely within availability window
-        return shiftStartTime >= dayAvailability.FromTime
-            && shiftEndTime <= dayAvailability.ToTime;
+        // Both start and end must fall within the availability window
+        return dayAvailability.ContainsTime(shiftStartTime)
+            && dayAvailability.ContainsTime(shiftEndTime);
     }
 
     /// <summary>
