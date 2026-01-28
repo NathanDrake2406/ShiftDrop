@@ -70,21 +70,31 @@ public class WebPushNotificationService : IPushNotificationService
 
         try
         {
+            ct.ThrowIfCancellationRequested();
+
+            // Note: WebPush client doesn't accept CancellationToken, so we check before/after
             await _client.SendNotificationAsync(pushSubscription, payload, _vapidDetails);
+
+            ct.ThrowIfCancellationRequested();
+
             subscription.MarkUsed(_timeProvider);
             await _db.SaveChangesAsync(ct);
-            _logger.LogInformation("Push notification sent to {Endpoint}", subscription.Endpoint);
+            _logger.LogInformation("Push notification sent to subscription {SubscriptionId}", subscription.Id);
+        }
+        catch (OperationCanceledException)
+        {
+            throw; // Don't log cancellation as error
         }
         catch (WebPushException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Gone)
         {
             // Subscription no longer valid
             subscription.Deactivate();
             await _db.SaveChangesAsync(ct);
-            _logger.LogWarning("Push subscription expired, deactivated: {Endpoint}", subscription.Endpoint);
+            _logger.LogWarning("Push subscription {SubscriptionId} expired, deactivated", subscription.Id);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send push notification to {Endpoint}", subscription.Endpoint);
+            _logger.LogError(ex, "Failed to send push notification to subscription {SubscriptionId}", subscription.Id);
         }
     }
 }

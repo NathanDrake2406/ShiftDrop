@@ -60,24 +60,36 @@ public class TwilioSmsService : ISmsService
 
     private async Task SendSms(string to, string body, string messageType, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
+
         try
         {
+            // Note: Twilio SDK doesn't accept CancellationToken, so we check before/after
             var message = await MessageResource.CreateAsync(
                 to: new TwilioPhoneNumber(to),
                 from: new TwilioPhoneNumber(_fromNumber),
                 body: body
             );
 
+            ct.ThrowIfCancellationRequested();
+
             _logger.LogInformation(
-                "SMS sent successfully. Type: {MessageType}, To: {To}, MessageSid: {MessageSid}, Status: {Status}",
-                messageType, to, message.Sid, message.Status);
+                "SMS sent successfully. Type: {MessageType}, To: {ToRedacted}, MessageSid: {MessageSid}, Status: {Status}",
+                messageType, RedactPhone(to), message.Sid, message.Status);
+        }
+        catch (OperationCanceledException)
+        {
+            throw; // Don't log cancellation as error
         }
         catch (Exception ex)
         {
             _logger.LogError(ex,
-                "Failed to send SMS. Type: {MessageType}, To: {To}, Error: {Error}",
-                messageType, to, ex.Message);
+                "Failed to send SMS. Type: {MessageType}, To: {ToRedacted}, Error: {Error}",
+                messageType, RedactPhone(to), ex.Message);
             throw;
         }
     }
+
+    private static string RedactPhone(string phone) =>
+        phone.Length > 4 ? $"***{phone[^4..]}" : "****";
 }
