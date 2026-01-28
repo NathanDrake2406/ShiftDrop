@@ -13,12 +13,17 @@ import { useAuth } from "./auth";
 function App() {
   const { isAuthenticated, isLoading } = useAuth();
 
+  // Detect Auth0 callback in progress (has code/state params)
+  // Don't auto-redirect during callback - let onRedirectCallback handle navigation
+  const isAuth0Callback =
+    window.location.search.includes("code=") && window.location.search.includes("state=");
+
   return (
     <Routes>
       <Route
         path="/"
         element={
-          isLoading ? (
+          isLoading || isAuth0Callback ? (
             <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400">
               Loading...
             </div>
