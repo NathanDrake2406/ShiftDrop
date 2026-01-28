@@ -52,7 +52,7 @@ public class OutboxProcessor : BackgroundService
         _logger.LogInformation("OutboxProcessor stopped");
     }
 
-    private async Task ProcessPendingMessages(CancellationToken ct)
+    internal async Task ProcessPendingMessages(CancellationToken ct)
     {
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -158,12 +158,8 @@ public class OutboxProcessor : BackgroundService
                 break;
 
             default:
-                _logger.LogWarning(
-                    "Unknown message type {MessageType} for message {MessageId}",
-                    message.MessageType,
-                    message.Id);
-                // Mark as sent to avoid infinite retries for unknown types
-                break;
+                throw new InvalidOperationException(
+                    $"Unknown message type '{message.MessageType}' for message {message.Id}");
         }
     }
 
