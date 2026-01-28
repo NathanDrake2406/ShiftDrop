@@ -8,3 +8,4 @@ shiftdrop_code.zip
 appsettings.Development.json
 .vercel
 .env*.local
+.claude/
