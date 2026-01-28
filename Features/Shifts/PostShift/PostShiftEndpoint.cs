@@ -2,6 +2,7 @@ using System.Security.Claims;
 using ShiftDrop.Common;
 using ShiftDrop.Common.Responses;
 using ShiftDrop.Domain;
+using TimeZoneConverter;
 
 namespace ShiftDrop.Features.Shifts.PostShift;
 
@@ -46,7 +47,8 @@ public static class PostShiftEndpoint
             .ToList();
 
         // Convert shift times to Australian Eastern Time for display
-        var aest = TimeZoneInfo.FindSystemTimeZoneById("Australia/Sydney");
+        // TZConvert handles cross-platform IANA/Windows timezone ID differences
+        var aest = TZConvert.GetTimeZoneInfo("Australia/Sydney");
         var utcStart = DateTime.SpecifyKind(shift.StartsAt, DateTimeKind.Utc);
         var utcEnd = DateTime.SpecifyKind(shift.EndsAt, DateTimeKind.Utc);
         var localStart = TimeZoneInfo.ConvertTimeFromUtc(utcStart, aest);
