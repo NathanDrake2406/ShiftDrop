@@ -63,10 +63,10 @@ public class AppDbContext : DbContext
 
             // Filtered indexes for token lookups (only index non-null tokens)
             entity.HasIndex(c => c.InviteToken)
-                .HasFilter("\"InviteToken\" IS NOT NULL")
+                .HasFilter("[InviteToken] IS NOT NULL")
                 .IsUnique();
             entity.HasIndex(c => c.OptOutToken)
-                .HasFilter("\"OptOutToken\" IS NOT NULL")
+                .HasFilter("[OptOutToken] IS NOT NULL")
                 .IsUnique();
 
             // Use backing field for proper change tracking with IReadOnlyCollection
@@ -74,7 +74,9 @@ public class AppDbContext : DbContext
             entity.HasMany(c => c.Claims)
                 .WithOne(sc => sc.Casual)
                 .HasForeignKey(sc => sc.CasualId)
-                .OnDelete(DeleteBehavior.Cascade);
+                // NoAction to avoid multiple cascade paths (SQL Server restriction)
+                // Claims are deleted via Shift cascade when Pool is deleted
+                .OnDelete(DeleteBehavior.NoAction);
 
             entity.Navigation(c => c.Availability).UsePropertyAccessMode(PropertyAccessMode.Field);
         });
@@ -130,7 +132,9 @@ public class AppDbContext : DbContext
             entity.HasOne(sn => sn.Casual)
                 .WithMany()
                 .HasForeignKey(sn => sn.CasualId)
-                .OnDelete(DeleteBehavior.Cascade);
+                // NoAction to avoid multiple cascade paths (SQL Server restriction)
+                // Notifications are deleted via Shift cascade when Pool is deleted
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<OutboxMessage>(entity =>
@@ -145,7 +149,7 @@ public class AppDbContext : DbContext
 
             // Index for outbox processor to find pending messages ready for processing
             entity.HasIndex(om => new { om.Status, om.NextRetryAt })
-                .HasFilter("\"Status\" = 'Pending'");
+                .HasFilter("[Status] = 'Pending'");
         });
 
         modelBuilder.Entity<PoolAdmin>(entity =>
@@ -169,11 +173,11 @@ public class AppDbContext : DbContext
             // Index for token lookup (for accepting invites)
             entity.HasIndex(pa => pa.InviteToken)
                 .IsUnique()
-                .HasFilter("\"InviteToken\" IS NOT NULL");
+                .HasFilter("[InviteToken] IS NOT NULL");
 
             // Index for Auth0Id lookup (to find pools user is admin of)
             entity.HasIndex(pa => pa.Auth0Id)
-                .HasFilter("\"Auth0Id\" IS NOT NULL");
+                .HasFilter("[Auth0Id] IS NOT NULL");
 
             entity.HasOne(pa => pa.Pool)
                 .WithMany(p => p.Admins)

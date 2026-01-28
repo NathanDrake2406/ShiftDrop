@@ -16,6 +16,9 @@ public abstract class IntegrationTestBase : IClassFixture<ShiftDropWebApplicatio
     protected readonly ShiftDropWebApplicationFactory Factory;
     protected readonly HttpClient Client;
 
+    // Thread-safe counter for generating unique phone numbers across all test scenarios
+    private static int _phoneCounter;
+
     protected IntegrationTestBase(ShiftDropWebApplicationFactory factory)
     {
         Factory = factory;
@@ -89,12 +92,13 @@ public abstract class IntegrationTestBase : IClassFixture<ShiftDropWebApplicatio
             var poolResult = Pool.Create(poolName, managerId, TimeProvider);
             scenario.Pool = poolResult.Value!;
 
-            // Create casuals
+            // Create casuals with globally unique phone numbers
             for (int i = 0; i < casualCount; i++)
             {
+                var phoneIndex = Interlocked.Increment(ref _phoneCounter);
                 var casualResult = scenario.Pool.AddCasual(
                     $"Casual {i + 1}",
-                    $"+6140000000{i}",
+                    $"+614{phoneIndex:D8}",  // Unique across all test scenarios
                     TimeProvider);
                 var casual = casualResult.Value!;
 

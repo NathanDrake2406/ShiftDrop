@@ -12,23 +12,21 @@ using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using Serilog;
 using ShiftDrop.Common.Services;
-using Testcontainers.PostgreSql;
+using Testcontainers.MsSql;
 
 namespace MulttenantSaas.Tests.Integration;
 
 /// <summary>
 /// Custom WebApplicationFactory that:
-/// 1. Uses Testcontainers PostgreSQL (required for concurrency token testing)
+/// 1. Uses Testcontainers SQL Server (required for concurrency token testing)
 /// 2. Replaces ISmsService with a mock
 /// 3. Uses FakeTimeProvider for deterministic time control
 /// 4. Adds test authentication handler
 /// </summary>
 public class ShiftDropWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgresContainer = new PostgreSqlBuilder("postgres:16-alpine")
-        .WithDatabase("shiftdrop_test")
-        .WithUsername("test")
-        .WithPassword("test")
+    private readonly MsSqlContainer _mssqlContainer = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest")
+        .WithPassword("Test@1234!")  // Must meet SQL Server password complexity
         .Build();
 
     public ISmsService SmsServiceMock { get; } = Substitute.For<ISmsService>();
@@ -86,9 +84,9 @@ public class ShiftDropWebApplicationFactory : WebApplicationFactory<Program>, IA
             services.RemoveAll<DbContextOptions<AppDbContext>>();
             services.RemoveAll<AppDbContext>();
 
-            // Add Testcontainers PostgreSQL with detailed logging
+            // Add Testcontainers SQL Server with detailed logging
             services.AddDbContext<AppDbContext>(options =>
-                options.UseNpgsql(_postgresContainer.GetConnectionString())
+                options.UseSqlServer(_mssqlContainer.GetConnectionString())
                     .EnableSensitiveDataLogging()
                     .EnableDetailedErrors());
 
@@ -130,8 +128,8 @@ public class ShiftDropWebApplicationFactory : WebApplicationFactory<Program>, IA
 
     public async Task InitializeAsync()
     {
-        // Start PostgreSQL container
-        await _postgresContainer.StartAsync();
+        // Start SQL Server container
+        await _mssqlContainer.StartAsync();
 
         // Set a reasonable default time (not in the past for shift creation)
         FakeTimeProvider.SetUtcNow(new DateTimeOffset(2024, 6, 15, 9, 0, 0, TimeSpan.Zero));
@@ -160,7 +158,7 @@ public class ShiftDropWebApplicationFactory : WebApplicationFactory<Program>, IA
 
     public new async Task DisposeAsync()
     {
-        await _postgresContainer.DisposeAsync();
+        await _mssqlContainer.DisposeAsync();
         await base.DisposeAsync();
     }
 }

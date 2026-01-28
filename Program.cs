@@ -167,14 +167,14 @@ builder
 
 builder.Services.AddAuthorization();
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 
 // Health checks with DB connectivity
 builder.Services.AddHealthChecks()
-    .AddNpgSql(
+    .AddSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection") ?? "",
-        name: "postgresql",
+        name: "sqlserver",
         tags: ["db", "ready"]);
 
 var app = builder.Build();

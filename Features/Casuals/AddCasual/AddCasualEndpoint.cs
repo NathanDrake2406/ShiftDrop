@@ -62,14 +62,14 @@ public static class AddCasualEndpoint
     }
     /// <summary>
     /// Checks if the exception is a unique constraint violation.
-    /// PostgreSQL uses error code 23505 for unique_violation.
+    /// SQL Server uses error 2627 (unique constraint) or 2601 (unique index).
     /// </summary>
     private static bool IsDuplicateKeyViolation(DbUpdateException ex)
     {
-        // Check for PostgreSQL unique violation (error code 23505)
-        if (ex.InnerException is Npgsql.PostgresException pgEx)
+        // Check for SQL Server unique constraint/index violation
+        if (ex.InnerException is Microsoft.Data.SqlClient.SqlException sqlEx)
         {
-            return pgEx.SqlState == "23505"; // unique_violation
+            return sqlEx.Number == 2627 || sqlEx.Number == 2601;
         }
         // Fallback: check message content
         return ex.InnerException?.Message.Contains("duplicate", StringComparison.OrdinalIgnoreCase) ?? false;
