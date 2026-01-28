@@ -65,7 +65,7 @@ public class WebPushNotificationService : IPushNotificationService
             title,
             body,
             url,
-            timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            timestamp = _timeProvider.GetUtcNow().ToUnixTimeMilliseconds()
         });
 
         try
