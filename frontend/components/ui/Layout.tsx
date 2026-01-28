@@ -52,9 +52,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, title, showBack, onBac
               <ArrowLeft className="w-5 h-5" />
             </button>
           )}
-          {!showBack && (
-            <img src="/logo.webp" alt="ShiftDrop" className="h-8 w-auto" />
-          )}
           {title && <h1 className="text-lg font-bold text-slate-900 dark:text-white truncate">{title}</h1>}
         </div>
         <div className="flex items-center gap-2">
