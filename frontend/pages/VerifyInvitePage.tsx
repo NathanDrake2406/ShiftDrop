@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Layout } from "../components/ui/Layout";
+import { usePushNotifications } from "../hooks/usePushNotifications";
 import * as casualApi from "../services/casualApi";
 import { ApiError } from "../types/api";
 import type { VerifyInviteResponse } from "../types/api";
@@ -15,6 +16,10 @@ export const VerifyInvitePage: React.FC = () => {
   const [state, setState] = useState<PageState>({ status: "loading" });
   // Prevent double-call in React StrictMode (development)
   const hasVerifiedRef = useRef(false);
+
+  // Get phone number from successful verification for push notifications
+  const phoneNumber = state.status === "success" ? state.data.phoneNumber : null;
+  const push = usePushNotifications(phoneNumber);
 
   useEffect(() => {
     if (!token) {
@@ -76,7 +81,36 @@ export const VerifyInvitePage: React.FC = () => {
                 You've joined <span className="font-semibold">{state.data.poolName}</span>. You'll receive SMS
                 notifications when new shifts are available.
               </p>
-              <p className="text-sm text-slate-400 dark:text-slate-500">You can close this page now.</p>
+
+              {/* Push Notification Prompt */}
+              {push.isSupported && (
+                <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                  {push.isSubscribed ? (
+                    <div className="flex items-center justify-center gap-2 text-emerald-600 dark:text-emerald-400">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="font-medium">Notifications enabled</span>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
+                        Get instant notifications when shifts are posted
+                      </p>
+                      <button
+                        onClick={push.subscribe}
+                        disabled={push.isLoading}
+                        className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+                      >
+                        {push.isLoading ? "Enabling..." : "Enable Notifications"}
+                      </button>
+                      {push.error && <p className="mt-2 text-sm text-red-500 dark:text-red-400">{push.error}</p>}
+                    </>
+                  )}
+                </div>
+              )}
+
+              <p className="text-sm text-slate-400 dark:text-slate-500 mt-6">You can close this page now.</p>
             </>
           )}
 

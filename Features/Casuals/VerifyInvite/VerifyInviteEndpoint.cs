@@ -32,6 +32,7 @@ public static class VerifyInviteEndpoint
             casual.Id,
             casual.Name,
             casual.Pool.Name,
+            casual.PhoneNumber,
             "Phone verified successfully! You'll now receive shift notifications."
         ));
     }
@@ -43,5 +44,6 @@ public record VerifyInviteResponse(
     Guid CasualId,
     string CasualName,
     string PoolName,
+    string PhoneNumber,
     string Message
 );

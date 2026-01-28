@@ -143,6 +143,7 @@ export interface VerifyInviteResponse {
   casualId: string;
   casualName: string;
   poolName: string;
+  phoneNumber: string;
   message: string;
 }
 

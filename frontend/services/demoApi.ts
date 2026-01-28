@@ -266,6 +266,7 @@ export const demoCasualApi = {
       casualId: casual.id,
       casualName: casual.name,
       poolName: pool.name,
+      phoneNumber: casual.phoneNumber,
       message: "Invite verified (demo).",
     };
   },
