@@ -221,9 +221,6 @@ app.UseSerilogRequestLogging(options =>
     };
 });
 
-// Rate limiting
-app.UseRateLimiter();
-
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -237,6 +234,9 @@ else
 }
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Rate limiting (must run after authentication so sms-send policy can access User claims)
+app.UseRateLimiter();
 
 // Health endpoints
 app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
