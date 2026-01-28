@@ -1,7 +1,7 @@
 using ShiftDrop.Domain;
 using Twilio;
 using Twilio.Rest.Api.V2010.Account;
-using Twilio.Types;
+using TwilioPhoneNumber = Twilio.Types.PhoneNumber;
 
 namespace ShiftDrop.Common.Services;
 
@@ -63,8 +63,8 @@ public class TwilioSmsService : ISmsService
         try
         {
             var message = await MessageResource.CreateAsync(
-                to: new PhoneNumber(to),
-                from: new PhoneNumber(_fromNumber),
+                to: new TwilioPhoneNumber(to),
+                from: new TwilioPhoneNumber(_fromNumber),
                 body: body
             );
 

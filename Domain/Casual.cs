@@ -4,7 +4,7 @@ public class Casual
 {
     public Guid Id { get; private set; }
     public string Name { get; private set; } = string.Empty;
-    public string PhoneNumber { get; private set; } = string.Empty;
+    public PhoneNumber PhoneNumber { get; private set; }
     public Guid PoolId { get; private set; }
     public Pool Pool { get; private set; } = null!;
     public DateTime CreatedAt { get; private set; }
@@ -43,16 +43,15 @@ public class Casual
         if (string.IsNullOrWhiteSpace(name))
             return Result<Casual>.Failure("Casual name cannot be empty");
 
-        if (string.IsNullOrWhiteSpace(phoneNumber))
-            return Result<Casual>.Failure("Phone number is required for SMS notifications");
-
-        var normalizedPhone = NormalizePhoneNumber(phoneNumber.Trim());
+        var phoneResult = PhoneNumber.Parse(phoneNumber);
+        if (phoneResult.IsFailure)
+            return Result<Casual>.Failure(phoneResult.Error!);
 
         var casual = new Casual
         {
             Id = Guid.NewGuid(),
             Name = name.Trim(),
-            PhoneNumber = normalizedPhone,
+            PhoneNumber = phoneResult.Value,
             Pool = pool,
             PoolId = pool.Id,
             CreatedAt = timeProvider.GetUtcNow().UtcDateTime,
@@ -202,31 +201,6 @@ public class Casual
     {
         _availability.Clear();
         _availability.AddRange(availability);
-    }
-
-    /// <summary>
-    /// Normalizes phone numbers to E.164 format for Twilio.
-    /// Handles Australian numbers: 0412345678 → +61412345678
-    /// </summary>
-    private static string NormalizePhoneNumber(string phone)
-    {
-        // Remove spaces, dashes, parentheses
-        var digits = new string(phone.Where(c => char.IsDigit(c) || c == '+').ToArray());
-
-        // Already in E.164 format
-        if (digits.StartsWith('+'))
-            return digits;
-
-        // Australian mobile starting with 04xx → +614xx
-        if (digits.StartsWith("04") && digits.Length == 10)
-            return "+61" + digits[1..];
-
-        // Australian number without leading 0 (e.g., 61412345678)
-        if (digits.StartsWith("61") && digits.Length == 11)
-            return "+" + digits;
-
-        // Assume it needs a + prefix
-        return "+" + digits;
     }
 }
 

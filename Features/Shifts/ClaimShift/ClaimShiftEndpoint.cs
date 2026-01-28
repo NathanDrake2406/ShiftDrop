@@ -18,9 +18,14 @@ public static class ClaimShiftEndpoint
         TimeProvider timeProvider,
         CancellationToken ct)
     {
+        var phoneResult = PhoneNumber.Parse(request.PhoneNumber);
+        if (phoneResult.IsFailure)
+            return Results.BadRequest(new { error = phoneResult.Error });
+
+        var phoneNumber = phoneResult.Value;
         var casual = await db.Casuals
             .Include(c => c.Claims)
-            .FirstOrDefaultAsync(c => c.PhoneNumber == request.PhoneNumber, ct);
+            .FirstOrDefaultAsync(c => c.PhoneNumber == phoneNumber, ct);
 
         if (casual == null)
             return Results.NotFound(new { error = "Casual not found with this phone number" });

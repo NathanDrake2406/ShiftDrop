@@ -20,10 +20,16 @@ public static class PushSubscribeEndpoint
         TimeProvider timeProvider,
         CancellationToken ct)
     {
+        var phoneResult = PhoneNumber.Parse(phoneNumber);
+        if (phoneResult.IsFailure)
+            return Results.BadRequest(new { error = phoneResult.Error });
+
+        var parsedPhone = phoneResult.Value;
+
         // Note: Cannot use c.IsActive (computed property) in LINQ-to-Entities.
         // Inline the expression for database translation.
         var casual = await db.Casuals
-            .FirstOrDefaultAsync(c => c.PhoneNumber == phoneNumber
+            .FirstOrDefaultAsync(c => c.PhoneNumber == parsedPhone
                                       && c.InviteStatus == InviteStatus.Accepted
                                       && c.OptedOutAt == null, ct);
 
@@ -61,8 +67,13 @@ public static class PushSubscribeEndpoint
         AppDbContext db,
         CancellationToken ct)
     {
+        var phoneResult = PhoneNumber.Parse(phoneNumber);
+        if (phoneResult.IsFailure)
+            return Results.BadRequest(new { error = phoneResult.Error });
+
+        var parsedPhone = phoneResult.Value;
         var casual = await db.Casuals
-            .FirstOrDefaultAsync(c => c.PhoneNumber == phoneNumber, ct);
+            .FirstOrDefaultAsync(c => c.PhoneNumber == parsedPhone, ct);
 
         if (casual == null)
             return Results.NotFound(new { error = "Casual not found" });

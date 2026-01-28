@@ -9,7 +9,7 @@ public class PoolAdmin
     public Guid Id { get; private set; }
     public Guid PoolId { get; private set; }
     public Pool Pool { get; private set; } = null!;
-    public string PhoneNumber { get; private set; } = string.Empty;
+    public PhoneNumber PhoneNumber { get; private set; }
     public string Name { get; private set; } = string.Empty;
 
     // Auth fields - null until admin accepts their invite
@@ -40,21 +40,21 @@ public class PoolAdmin
         Pool pool,
         TimeProvider timeProvider)
     {
-        if (string.IsNullOrWhiteSpace(phoneNumber))
-            return Result<PoolAdmin>.Failure("Phone number is required for SMS invites");
-
         if (string.IsNullOrWhiteSpace(name))
             return Result<PoolAdmin>.Failure("Name cannot be empty");
 
+        var phoneResult = PhoneNumber.Parse(phoneNumber);
+        if (phoneResult.IsFailure)
+            return Result<PoolAdmin>.Failure(phoneResult.Error!);
+
         var now = timeProvider.GetUtcNow().UtcDateTime;
-        var normalizedPhone = NormalizePhoneNumber(phoneNumber.Trim());
 
         var poolAdmin = new PoolAdmin
         {
             Id = Guid.NewGuid(),
             PoolId = pool.Id,
             Pool = pool,
-            PhoneNumber = normalizedPhone,
+            PhoneNumber = phoneResult.Value,
             Name = name.Trim(),
             InviteToken = Guid.NewGuid().ToString("N"),
             InvitedAt = now,
@@ -99,25 +99,5 @@ public class PoolAdmin
         InviteExpiresAt = timeProvider.GetUtcNow().UtcDateTime.AddDays(7);
 
         return Result<PoolAdmin>.Success(this);
-    }
-
-    /// <summary>
-    /// Normalizes phone numbers to E.164 format for SMS delivery.
-    /// Handles Australian numbers: 0412345678 → +61412345678
-    /// </summary>
-    private static string NormalizePhoneNumber(string phone)
-    {
-        var digits = new string(phone.Where(c => char.IsDigit(c) || c == '+').ToArray());
-
-        if (digits.StartsWith('+'))
-            return digits;
-
-        if (digits.StartsWith("04") && digits.Length == 10)
-            return "+61" + digits[1..];
-
-        if (digits.StartsWith("61") && digits.Length == 11)
-            return "+" + digits;
-
-        return "+" + digits;
     }
 }

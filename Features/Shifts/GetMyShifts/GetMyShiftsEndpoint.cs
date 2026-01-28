@@ -16,10 +16,15 @@ public static class GetMyShiftsEndpoint
         AppDbContext db,
         CancellationToken ct)
     {
+        var phoneResult = PhoneNumber.Parse(phoneNumber);
+        if (phoneResult.IsFailure)
+            return Results.BadRequest(new { error = phoneResult.Error });
+
+        var parsedPhone = phoneResult.Value;
         var casual = await db.Casuals
             .Include(c => c.Claims)
                 .ThenInclude(cl => cl.Shift)
-            .FirstOrDefaultAsync(c => c.PhoneNumber == phoneNumber, ct);
+            .FirstOrDefaultAsync(c => c.PhoneNumber == parsedPhone, ct);
 
         if (casual == null)
             return Results.NotFound(new { error = "Casual not found with this phone number" });

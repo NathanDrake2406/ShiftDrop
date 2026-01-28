@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ShiftDrop.Domain;
 
 public class AppDbContext : DbContext
@@ -47,7 +48,12 @@ public class AppDbContext : DbContext
             entity.HasKey(c => c.Id);
             entity.Property(c => c.Id).ValueGeneratedNever(); // Domain generates IDs
             entity.Property(c => c.Name).HasMaxLength(200).IsRequired();
-            entity.Property(c => c.PhoneNumber).HasMaxLength(50).IsRequired();
+            entity.Property(c => c.PhoneNumber)
+                .HasMaxLength(50)
+                .IsRequired()
+                .HasConversion(
+                    phone => phone.Value,
+                    value => PhoneNumber.FromTrusted(value));
             entity.HasIndex(c => new { c.PoolId, c.PhoneNumber }).IsUnique();
 
             // Token fields for SMS-based verification
@@ -147,7 +153,12 @@ public class AppDbContext : DbContext
             entity.HasKey(pa => pa.Id);
             entity.Property(pa => pa.Id).ValueGeneratedNever(); // Domain generates IDs
 
-            entity.Property(pa => pa.PhoneNumber).HasMaxLength(50).IsRequired();
+            entity.Property(pa => pa.PhoneNumber)
+                .HasMaxLength(50)
+                .IsRequired()
+                .HasConversion(
+                    phone => phone.Value,
+                    value => PhoneNumber.FromTrusted(value));
             entity.Property(pa => pa.Name).HasMaxLength(200).IsRequired();
             entity.Property(pa => pa.Auth0Id).HasMaxLength(200);
             entity.Property(pa => pa.InviteToken).HasMaxLength(32);
