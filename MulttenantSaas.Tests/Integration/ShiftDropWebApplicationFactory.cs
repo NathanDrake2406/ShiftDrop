@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -36,8 +37,22 @@ public class ShiftDropWebApplicationFactory : WebApplicationFactory<Program>, IA
     private static readonly object _serilogLock = new();
     private static bool _serilogReset;
 
+    /// <summary>
+    /// Test auth token used for webhook signature verification tests.
+    /// </summary>
+    public const string TestTwilioAuthToken = "test-auth-token-for-webhook-verification";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // Add test configuration
+        builder.ConfigureAppConfiguration((context, config) =>
+        {
+            config.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Twilio:AuthToken"] = TestTwilioAuthToken
+            });
+        });
+
         // Reset Serilog's static logger to prevent "logger is already frozen" errors
         // when multiple test classes run. Each WebApplicationFactory tries to freeze
         // the same static Log.Logger, which fails on subsequent attempts.

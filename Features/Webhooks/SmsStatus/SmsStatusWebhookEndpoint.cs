@@ -1,6 +1,5 @@
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.EntityFrameworkCore;
 
 namespace ShiftDrop.Features.Webhooks.SmsStatus;
 
@@ -20,13 +19,23 @@ public static class SmsStatusWebhookEndpoint
     {
         var logger = loggerFactory.CreateLogger("SmsStatusWebhook");
 
+        // Read form async FIRST to avoid sync I/O issues
+        var form = await request.ReadFormAsync(ct);
+
         // Verify webhook signature (Twilio uses X-Twilio-Signature header)
         var signature = request.Headers["X-Twilio-Signature"].FirstOrDefault();
         var authToken = config["Twilio:AuthToken"];
 
-        if (!string.IsNullOrEmpty(authToken) && !string.IsNullOrEmpty(signature))
+        // If auth token is configured, signature verification is REQUIRED
+        if (!string.IsNullOrEmpty(authToken))
         {
-            if (!VerifyTwilioSignature(request, signature, authToken))
+            if (string.IsNullOrEmpty(signature))
+            {
+                logger.LogWarning("Twilio webhook signature missing when auth is configured");
+                return Results.Unauthorized();
+            }
+
+            if (!VerifyTwilioSignature(request, form, signature, authToken))
             {
                 logger.LogWarning("Invalid Twilio webhook signature");
                 return Results.Unauthorized();
@@ -34,7 +43,6 @@ public static class SmsStatusWebhookEndpoint
         }
 
         // Parse Twilio webhook payload
-        var form = await request.ReadFormAsync(ct);
         var messageSid = form["MessageSid"].FirstOrDefault();
         var messageStatus = form["MessageStatus"].FirstOrDefault();
         var errorCode = form["ErrorCode"].FirstOrDefault();
@@ -60,13 +68,16 @@ public static class SmsStatusWebhookEndpoint
     /// Verifies Twilio webhook signature using HMAC-SHA1.
     /// See: https://www.twilio.com/docs/usage/security#validating-requests
     /// </summary>
-    private static bool VerifyTwilioSignature(HttpRequest request, string signature, string authToken)
+    private static bool VerifyTwilioSignature(
+        HttpRequest request,
+        IFormCollection form,
+        string signature,
+        string authToken)
     {
         // Build the full URL
         var url = $"{request.Scheme}://{request.Host}{request.Path}";
 
         // Sort form parameters and append to URL
-        var form = request.Form;
         var sortedParams = form.Keys
             .OrderBy(k => k)
             .Select(k => $"{k}{form[k]}")
