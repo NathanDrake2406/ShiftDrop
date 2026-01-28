@@ -15,7 +15,6 @@ interface ShiftCardProps {
   onResendNotification?: (shiftId: string) => void;
   userType: "manager" | "casual";
   isLoading?: boolean;
-  isResending?: boolean;
   userClaimStatus?: ClaimStatusValue;
 }
 
@@ -28,7 +27,6 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({
   onResendNotification,
   userType,
   isLoading,
-  isResending,
   userClaimStatus,
 }) => {
   const start = new Date(shift.startsAt);
@@ -111,12 +109,7 @@ export const ShiftCard: React.FC<ShiftCardProps> = ({
           {userType === "manager" && !isCancelled && (
             <>
               {!isFilled && onResendNotification && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => onResendNotification(shift.id)}
-                  isLoading={isResending}
-                >
+                <Button size="sm" variant="secondary" onClick={() => onResendNotification(shift.id)}>
                   <RefreshCw className="w-3 h-3 mr-1" />
                   Resend
                 </Button>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "./ui/Button";
 import { Modal } from "./ui/Modal";
+import { ConfirmDialog } from "./ui/ConfirmDialog";
 import type { PoolAdminResponse } from "../types/api";
 
 interface TeamTabProps {
@@ -17,6 +18,8 @@ export function TeamTab({ ownerLabel, admins, onInviteAdmin, onRemoveAdmin, isLo
   const [form, setForm] = useState({ name: "", phone: "" });
   const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState<{ adminId: string; adminName: string } | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
 
   const closeInvite = () => {
     setIsInviting(false);
@@ -52,12 +55,20 @@ export function TeamTab({ ownerLabel, admins, onInviteAdmin, onRemoveAdmin, isLo
     }
   };
 
-  const handleRemove = async (adminId: string) => {
+  const handleRemoveClick = (admin: PoolAdminResponse) => {
+    setConfirmRemove({ adminId: admin.id, adminName: admin.name });
+  };
+
+  const handleConfirmRemove = async () => {
+    if (!confirmRemove) return;
+    setIsRemoving(true);
     try {
-      await onRemoveAdmin(adminId);
+      await onRemoveAdmin(confirmRemove.adminId);
+      setConfirmRemove(null);
     } catch (err) {
-      // Handle error silently or show toast
       console.error("Failed to remove admin:", err);
+    } finally {
+      setIsRemoving(false);
     }
   };
 
@@ -113,7 +124,7 @@ export function TeamTab({ ownerLabel, admins, onInviteAdmin, onRemoveAdmin, isLo
                 {admin.isAccepted ? "Active" : "Pending"}
               </span>
               <button
-                onClick={() => handleRemove(admin.id)}
+                onClick={() => handleRemoveClick(admin)}
                 className="p-1 text-slate-400 hover:text-red-500 dark:hover:text-red-400"
                 title="Remove admin"
               >
@@ -184,6 +195,17 @@ export function TeamTab({ ownerLabel, admins, onInviteAdmin, onRemoveAdmin, isLo
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={confirmRemove !== null}
+        onClose={() => setConfirmRemove(null)}
+        onConfirm={handleConfirmRemove}
+        title="Remove Admin"
+        message={`Remove ${confirmRemove?.adminName ?? "this admin"} from the pool? They will no longer be able to manage shifts or casuals.`}
+        confirmLabel="Remove Admin"
+        isDanger
+        isLoading={isRemoving}
+      />
     </div>
   );
 }

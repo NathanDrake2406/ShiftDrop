@@ -69,12 +69,11 @@ export const PoolDetails: React.FC = () => {
   const [casualForm, setCasualForm] = useState({ name: "", phone: "" });
   const [casualErrors, setCasualErrors] = useState<{ name?: string; phone?: string }>({});
   const [confirmAction, setConfirmAction] = useState<null | {
-    type: "cancelShift" | "removeCasual" | "releaseCasual";
+    type: "cancelShift" | "removeCasual" | "releaseCasual" | "resendInvite" | "resendShiftNotification";
     shiftId?: string;
     casualId?: string;
+    casualName?: string;
   }>(null);
-  const [resendingInvite, setResendingInvite] = useState<string | null>(null);
-  const [resendingShiftNotification, setResendingShiftNotification] = useState<string | null>(null);
 
   // Availability query (only when a casual is selected)
   const { data: casualAvailability = [], isLoading: loadingAvailability } = useCasualAvailability(
@@ -328,38 +327,12 @@ export const PoolDetails: React.FC = () => {
     setConfirmAction({ type: "releaseCasual", shiftId, casualId });
   };
 
-  const handleResendInvite = async (casual: CasualResponse) => {
-    if (!id) return;
-    setResendingInvite(casual.id);
-    try {
-      await resendInviteMutation.mutateAsync(casual.id);
-      showToast(`Invite resent to ${casual.name}`, "success");
-    } catch (err) {
-      if (err instanceof ApiError) {
-        showToast(err.message, "error");
-      } else {
-        showToast("Failed to resend invite", "error");
-      }
-    } finally {
-      setResendingInvite(null);
-    }
+  const handleResendInvite = (casual: CasualResponse) => {
+    setConfirmAction({ type: "resendInvite", casualId: casual.id, casualName: casual.name });
   };
 
-  const handleResendShiftNotification = async (shiftId: string) => {
-    if (!id) return;
-    setResendingShiftNotification(shiftId);
-    try {
-      const result = await resendShiftMutation.mutateAsync(shiftId);
-      showToast(result.message, "success");
-    } catch (err) {
-      if (err instanceof ApiError) {
-        showToast(err.message, "error");
-      } else {
-        showToast("Failed to resend notifications", "error");
-      }
-    } finally {
-      setResendingShiftNotification(null);
-    }
+  const handleResendShiftNotification = (shiftId: string) => {
+    setConfirmAction({ type: "resendShiftNotification", shiftId });
   };
 
   const confirmActionCopy = (() => {
@@ -370,18 +343,35 @@ export const PoolDetails: React.FC = () => {
           title: "Cancel Shift",
           message: "Cancel this shift? It will be removed for everyone.",
           confirmLabel: "Cancel Shift",
+          isDanger: true,
         };
       case "removeCasual":
         return {
           title: "Remove Casual",
           message: "Remove this casual from the pool?",
           confirmLabel: "Remove Casual",
+          isDanger: true,
         };
       case "releaseCasual":
         return {
           title: "Remove Worker",
           message: "Remove this worker from the shift?",
           confirmLabel: "Remove Worker",
+          isDanger: true,
+        };
+      case "resendInvite":
+        return {
+          title: "Resend Invite",
+          message: `Resend the invite SMS to ${confirmAction.casualName ?? "this casual"}?`,
+          confirmLabel: "Resend",
+          isDanger: false,
+        };
+      case "resendShiftNotification":
+        return {
+          title: "Resend Notifications",
+          message: "Resend shift notifications to all active casuals who haven't claimed this shift?",
+          confirmLabel: "Resend",
+          isDanger: false,
         };
       default:
         return null;
@@ -389,7 +379,11 @@ export const PoolDetails: React.FC = () => {
   })();
 
   const isConfirmingAction =
-    cancelShiftMutation.isPending || removeCasualMutation.isPending || releaseCasualMutation.isPending;
+    cancelShiftMutation.isPending ||
+    removeCasualMutation.isPending ||
+    releaseCasualMutation.isPending ||
+    resendInviteMutation.isPending ||
+    resendShiftMutation.isPending;
 
   const handleConfirmAction = async () => {
     if (!id || !confirmAction) return;
@@ -408,6 +402,14 @@ export const PoolDetails: React.FC = () => {
           casualId: confirmAction.casualId,
         });
         showToast("Worker released from shift", "success");
+      }
+      if (confirmAction.type === "resendInvite" && confirmAction.casualId) {
+        await resendInviteMutation.mutateAsync(confirmAction.casualId);
+        showToast(`Invite resent to ${confirmAction.casualName ?? "casual"}`, "success");
+      }
+      if (confirmAction.type === "resendShiftNotification" && confirmAction.shiftId) {
+        const result = await resendShiftMutation.mutateAsync(confirmAction.shiftId);
+        showToast(result.message, "success");
       }
     } catch (err) {
       if (err instanceof ApiError) {
@@ -516,7 +518,6 @@ export const PoolDetails: React.FC = () => {
                 onCancel={handleCancelShift}
                 onReleaseCasual={handleReleaseCasual}
                 onResendNotification={handleResendShiftNotification}
-                isResending={resendingShiftNotification === shift.id}
               />
             ))}
         </div>
@@ -538,7 +539,6 @@ export const PoolDetails: React.FC = () => {
                   onRemove={() => handleRemoveCasual(casual.id)}
                   onResendInvite={() => handleResendInvite(casual)}
                   onEditAvailability={() => handleOpenAvailability(casual)}
-                  isResending={resendingInvite === casual.id}
                 />
               ))}
             </div>
@@ -554,7 +554,6 @@ export const PoolDetails: React.FC = () => {
                   onRemove={() => handleRemoveCasual(casual.id)}
                   onResendInvite={() => handleResendInvite(casual)}
                   onEditAvailability={() => handleOpenAvailability(casual)}
-                  isResending={resendingInvite === casual.id}
                 />
               ))}
             </div>
@@ -724,7 +723,7 @@ export const PoolDetails: React.FC = () => {
         title={confirmActionCopy?.title ?? ""}
         message={confirmActionCopy?.message ?? ""}
         confirmLabel={confirmActionCopy?.confirmLabel ?? "Confirm"}
-        isDanger={confirmAction?.type === "cancelShift" || confirmAction?.type === "removeCasual"}
+        isDanger={confirmActionCopy?.isDanger ?? false}
         isLoading={isConfirmingAction}
       />
 
@@ -750,10 +749,9 @@ interface CasualRowProps {
   onRemove: () => void;
   onResendInvite: () => void;
   onEditAvailability: () => void;
-  isResending: boolean;
 }
 
-function CasualRow({ casual, onRemove, onResendInvite, onEditAvailability, isResending }: CasualRowProps) {
+function CasualRow({ casual, onRemove, onResendInvite, onEditAvailability }: CasualRowProps) {
   const statusBadge = casual.isOptedOut ? (
     <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
       Opted Out
@@ -788,11 +786,10 @@ function CasualRow({ casual, onRemove, onResendInvite, onEditAvailability, isRes
         {canResend && (
           <button
             onClick={onResendInvite}
-            disabled={isResending}
-            className="p-2 text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors disabled:opacity-50"
+            className="p-2 text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
             title="Resend invite"
           >
-            <RefreshCw className={`w-4 h-4 ${isResending ? "animate-spin" : ""}`} />
+            <RefreshCw className="w-4 h-4" />
           </button>
         )}
         <button
