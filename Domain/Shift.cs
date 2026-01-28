@@ -48,9 +48,12 @@ public class Shift
 
     internal Result<ShiftClaim> AcceptClaim(Casual casual, TimeProvider timeProvider)
     {
+        if (StartsAt <= timeProvider.GetUtcNow().UtcDateTime)
+            return Result<ShiftClaim>.Failure("This shift has already started");
+
         if (Status == ShiftStatus.Filled)
             return Result<ShiftClaim>.Failure("This shift is already filled");
-        
+
         if (Status == ShiftStatus.Cancelled)
             return Result<ShiftClaim>.Failure("This shift has been cancelled");
 

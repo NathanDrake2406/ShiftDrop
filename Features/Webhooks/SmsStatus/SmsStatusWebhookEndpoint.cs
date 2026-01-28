@@ -74,8 +74,11 @@ public static class SmsStatusWebhookEndpoint
         string signature,
         string authToken)
     {
-        // Build the full URL
-        var url = $"{request.Scheme}://{request.Host}{request.Path}";
+        // Build the full URL using forwarded headers if behind a proxy
+        // This handles reverse proxies (nginx, load balancers) that terminate HTTPS
+        var scheme = request.Headers["X-Forwarded-Proto"].FirstOrDefault() ?? request.Scheme;
+        var host = request.Headers["X-Forwarded-Host"].FirstOrDefault() ?? request.Host.ToString();
+        var url = $"{scheme}://{host}{request.Path}";
 
         // Sort form parameters and append to URL
         var sortedParams = form.Keys
@@ -90,6 +93,9 @@ public static class SmsStatusWebhookEndpoint
         var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(data));
         var computedSignature = Convert.ToBase64String(hash);
 
-        return signature == computedSignature;
+        // Use constant-time comparison to prevent timing attacks
+        return CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(signature),
+            Encoding.UTF8.GetBytes(computedSignature));
     }
 }

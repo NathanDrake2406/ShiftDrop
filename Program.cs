@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
@@ -78,27 +79,59 @@ builder.Services.AddRateLimiter(options =>
 
     // Global policy: 100 requests per minute per IP
     options.AddPolicy("fixed", httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
+    {
+        // Check if rate limiting is disabled (e.g., in tests) at request time
+        var config = httpContext.RequestServices.GetRequiredService<IConfiguration>();
+        var disabled = config.GetValue<bool>("RateLimiting:Disabled");
+        var limit = disabled ? int.MaxValue : 100;
+
+        return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 100,
+                PermitLimit = limit,
                 Window = TimeSpan.FromMinutes(1),
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                 QueueLimit = 0 // Reject immediately when limit reached
-            }));
+            });
+    });
 
     // Strict policy for anonymous endpoints: 20 requests per minute
     options.AddPolicy("strict", httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
+    {
+        var config = httpContext.RequestServices.GetRequiredService<IConfiguration>();
+        var disabled = config.GetValue<bool>("RateLimiting:Disabled");
+        var limit = disabled ? int.MaxValue : 20;
+
+        return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 20,
+                PermitLimit = limit,
                 Window = TimeSpan.FromMinutes(1),
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                 QueueLimit = 0
-            }));
+            });
+    });
+
+    // SMS-sending endpoints: 5 per minute per user (prevents spam/accidents)
+    // Keyed by authenticated user ID to prevent abuse regardless of IP
+    options.AddPolicy("sms-send", httpContext =>
+    {
+        var config = httpContext.RequestServices.GetRequiredService<IConfiguration>();
+        var disabled = config.GetValue<bool>("RateLimiting:Disabled");
+        var limit = disabled ? int.MaxValue : 5;
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = limit,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            });
+    });
 });
 
 // SMS service: Use Twilio if configured, otherwise Console (logs only)

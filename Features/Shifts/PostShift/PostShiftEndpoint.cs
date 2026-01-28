@@ -8,9 +8,9 @@ namespace ShiftDrop.Features.Shifts.PostShift;
 
 public static class PostShiftEndpoint
 {
-    public static void MapPostShift(this RouteGroupBuilder group)
+    public static RouteHandlerBuilder MapPostShift(this RouteGroupBuilder group)
     {
-        group.MapPost("/{poolId:guid}/shifts", Handle);
+        return group.MapPost("/{poolId:guid}/shifts", Handle);
     }
 
     private static async Task<IResult> Handle(

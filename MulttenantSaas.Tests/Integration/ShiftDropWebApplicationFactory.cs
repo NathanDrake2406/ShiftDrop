@@ -49,7 +49,9 @@ public class ShiftDropWebApplicationFactory : WebApplicationFactory<Program>, IA
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Twilio:AuthToken"] = TestTwilioAuthToken
+                ["Twilio:AuthToken"] = TestTwilioAuthToken,
+                // Disable rate limiting in tests for reliable test execution
+                ["RateLimiting:Disabled"] = "true"
             });
         });
 

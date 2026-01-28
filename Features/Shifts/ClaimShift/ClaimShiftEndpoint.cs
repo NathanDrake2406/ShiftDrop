@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ShiftDrop.Common.Responses;
 using ShiftDrop.Domain;
+using TimeZoneConverter;
 
 namespace ShiftDrop.Features.Shifts.ClaimShift;
 
@@ -66,7 +67,8 @@ public static class ClaimShiftEndpoint
 
     private static string FormatShiftDescription(Shift shift)
     {
-        var aest = TimeZoneInfo.FindSystemTimeZoneById("Australia/Sydney");
+        // TZConvert handles cross-platform IANA/Windows timezone ID differences
+        var aest = TZConvert.GetTimeZoneInfo("Australia/Sydney");
         var utcStart = DateTime.SpecifyKind(shift.StartsAt, DateTimeKind.Utc);
         var utcEnd = DateTime.SpecifyKind(shift.EndsAt, DateTimeKind.Utc);
         var localStart = TimeZoneInfo.ConvertTimeFromUtc(utcStart, aest);

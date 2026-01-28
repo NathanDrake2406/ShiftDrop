@@ -2,14 +2,15 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using ShiftDrop.Common;
 using ShiftDrop.Domain;
+using TimeZoneConverter;
 
 namespace ShiftDrop.Features.Shifts.ResendShiftNotification;
 
 public static class ResendShiftNotificationEndpoint
 {
-    public static void MapResendShiftNotification(this RouteGroupBuilder group)
+    public static RouteHandlerBuilder MapResendShiftNotification(this RouteGroupBuilder group)
     {
-        group.MapPost("/{poolId:guid}/shifts/{shiftId:guid}/resend", Handle);
+        return group.MapPost("/{poolId:guid}/shifts/{shiftId:guid}/resend", Handle);
     }
 
     private static async Task<IResult> Handle(
@@ -51,18 +52,20 @@ public static class ResendShiftNotificationEndpoint
         var baseUrl = config["App:BaseUrl"] ?? "https://shiftdrop.local";
 
         // Convert shift times to Australian Eastern Time for display
-        var aest = TimeZoneInfo.FindSystemTimeZoneById("Australia/Sydney");
+        // TZConvert handles cross-platform IANA/Windows timezone ID differences
+        var aest = TZConvert.GetTimeZoneInfo("Australia/Sydney");
         var utcStart = DateTime.SpecifyKind(shift.StartsAt, DateTimeKind.Utc);
         var utcEnd = DateTime.SpecifyKind(shift.EndsAt, DateTimeKind.Utc);
         var localStart = TimeZoneInfo.ConvertTimeFromUtc(utcStart, aest);
         var localEnd = TimeZoneInfo.ConvertTimeFromUtc(utcEnd, aest);
         var shiftTimeDisplay = $"{localStart:ddd d MMM, h:mmtt} - {localEnd:h:mmtt}";
 
-        // Find active casuals who haven't claimed this shift yet and are available
-        var casualsWhoClaimedIds = shift.Claims
-            .Where(c => c.Status == ClaimStatus.Claimed)
+        // Load claimed casual IDs separately (GetAuthorizedPoolAsync doesn't include shift claims)
+        var claimedCasualIdList = await db.ShiftClaims
+            .Where(c => c.ShiftId == shiftId && c.Status == ClaimStatus.Claimed)
             .Select(c => c.CasualId)
-            .ToHashSet();
+            .ToListAsync(ct);
+        var casualsWhoClaimedIds = claimedCasualIdList.ToHashSet();
 
         var casualsToNotify = pool.Casuals
             .Where(c => c.IsActive &&
@@ -76,9 +79,11 @@ public static class ResendShiftNotificationEndpoint
         var notifiedCount = 0;
         foreach (var casual in casualsToNotify)
         {
-            // Reuse existing notification if available and not used, otherwise create new
+            // Reuse existing notification if available, valid, and not used; otherwise create new
             var existingNotification = existingNotifications
-                .FirstOrDefault(n => n.CasualId == casual.Id && n.TokenStatus == TokenStatus.Pending);
+                .FirstOrDefault(n => n.CasualId == casual.Id
+                    && n.TokenStatus == TokenStatus.Pending
+                    && n.IsValid(timeProvider));
 
             ShiftNotification notification;
             if (existingNotification != null)

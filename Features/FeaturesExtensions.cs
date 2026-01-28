@@ -9,19 +9,25 @@ public static class FeaturesExtensions
 {
     public static void MapFeatures(this WebApplication app)
     {
-        // Manager endpoints (authenticated)
-        var poolsGroup = app.MapGroup("/pools").RequireAuthorization();
+        // Manager endpoints (authenticated, standard rate limit)
+        var poolsGroup = app.MapGroup("/pools")
+            .RequireAuthorization()
+            .RequireRateLimiting("fixed");
         poolsGroup.MapPoolFeatures();
         poolsGroup.MapCasualFeatures();
         poolsGroup.MapManagerShiftFeatures();
         poolsGroup.MapPoolAdminFeatures();
 
         // Pool admin accept invite (authenticated - any user)
-        var adminGroup = app.MapGroup("/pool-admins").RequireAuthorization();
+        var adminGroup = app.MapGroup("/pool-admins")
+            .RequireAuthorization()
+            .RequireRateLimiting("fixed");
         adminGroup.MapAcceptAdminInviteFeature();
 
-        // Casual endpoints (anonymous)
-        var casualGroup = app.MapGroup("/casual").AllowAnonymous();
+        // Casual endpoints (anonymous, strict rate limit)
+        var casualGroup = app.MapGroup("/casual")
+            .AllowAnonymous()
+            .RequireRateLimiting("strict");
         casualGroup.MapAnonymousCasualFeatures(); // verify, opt-out
         casualGroup.MapCasualShiftFeatures();     // shifts, claim-by-token
     }

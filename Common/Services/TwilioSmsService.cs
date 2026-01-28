@@ -64,14 +64,14 @@ public class TwilioSmsService : ISmsService
 
         try
         {
-            // Note: Twilio SDK doesn't accept CancellationToken, so we check before/after
+            // Note: Twilio SDK doesn't accept CancellationToken, so we check before only.
+            // We intentionally do NOT check after send - if SMS was sent successfully,
+            // throwing would cause outbox retry and send a duplicate message.
             var message = await MessageResource.CreateAsync(
                 to: new TwilioPhoneNumber(to),
                 from: new TwilioPhoneNumber(_fromNumber),
                 body: body
             );
-
-            ct.ThrowIfCancellationRequested();
 
             _logger.LogInformation(
                 "SMS sent successfully. Type: {MessageType}, To: {ToRedacted}, MessageSid: {MessageSid}, Status: {Status}",

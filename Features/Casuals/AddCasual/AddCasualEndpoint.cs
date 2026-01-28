@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 using ShiftDrop.Common;
 using ShiftDrop.Common.Responses;
 using ShiftDrop.Domain;
@@ -46,11 +47,32 @@ public static class AddCasualEndpoint
         );
         db.OutboxMessages.Add(OutboxMessage.Create(payload, timeProvider));
 
-        await db.SaveChangesAsync(ct);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (IsDuplicateKeyViolation(ex))
+        {
+            return Results.Conflict(new { error = "A casual with this phone number already exists in this pool" });
+        }
 
         return Results.Created(
             $"/pools/{poolId}/casuals/{casual.Id}",
             new CasualResponse(casual));
+    }
+    /// <summary>
+    /// Checks if the exception is a unique constraint violation.
+    /// PostgreSQL uses error code 23505 for unique_violation.
+    /// </summary>
+    private static bool IsDuplicateKeyViolation(DbUpdateException ex)
+    {
+        // Check for PostgreSQL unique violation (error code 23505)
+        if (ex.InnerException is Npgsql.PostgresException pgEx)
+        {
+            return pgEx.SqlState == "23505"; // unique_violation
+        }
+        // Fallback: check message content
+        return ex.InnerException?.Message.Contains("duplicate", StringComparison.OrdinalIgnoreCase) ?? false;
     }
 }
 

@@ -72,10 +72,10 @@ public class WebPushNotificationService : IPushNotificationService
         {
             ct.ThrowIfCancellationRequested();
 
-            // Note: WebPush client doesn't accept CancellationToken, so we check before/after
+            // Note: WebPush client doesn't accept CancellationToken, so we check before only.
+            // We intentionally do NOT check after send - if push was sent successfully,
+            // throwing would cause retry and send a duplicate notification.
             await _client.SendNotificationAsync(pushSubscription, payload, _vapidDetails);
-
-            ct.ThrowIfCancellationRequested();
 
             subscription.MarkUsed(_timeProvider);
             await _db.SaveChangesAsync(ct);

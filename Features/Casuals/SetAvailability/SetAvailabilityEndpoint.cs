@@ -31,6 +31,23 @@ public static class SetAvailabilityEndpoint
         if (casual == null)
             return Results.NotFound(new { error = "Casual not found" });
 
+        // Validate DayOfWeek range (0-6)
+        var invalidDays = request.Availability
+            .Where(a => a.DayOfWeek < 0 || a.DayOfWeek > 6)
+            .Select(a => a.DayOfWeek)
+            .ToList();
+        if (invalidDays.Count > 0)
+            return Results.BadRequest(new { error = $"Invalid day of week: {string.Join(", ", invalidDays)}. Must be 0-6." });
+
+        // Check for duplicate days in request
+        var duplicateDays = request.Availability
+            .GroupBy(a => a.DayOfWeek)
+            .Where(g => g.Count() > 1)
+            .Select(g => (DayOfWeek)g.Key)
+            .ToList();
+        if (duplicateDays.Count > 0)
+            return Results.BadRequest(new { error = $"Duplicate days in request: {string.Join(", ", duplicateDays)}" });
+
         // Remove existing availability
         db.CasualAvailability.RemoveRange(casual.Availability);
 

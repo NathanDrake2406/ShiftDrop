@@ -72,8 +72,7 @@ public static class ClaimByTokenEndpoint
         return Results.Ok(new ClaimByTokenResponse(
             "Shift claimed successfully!",
             new ShiftResponse(shift),
-            casual.Name,
-            casual.PhoneNumber
+            casual.Name
         ));
     }
 }
@@ -81,6 +80,5 @@ public static class ClaimByTokenEndpoint
 public record ClaimByTokenResponse(
     string Message,
     ShiftResponse Shift,
-    string CasualName,
-    string PhoneNumber
+    string CasualName
 );

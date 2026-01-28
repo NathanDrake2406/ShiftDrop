@@ -123,38 +123,40 @@ public class OutboxProcessor : BackgroundService
         switch (message.MessageType)
         {
             case nameof(ShiftBroadcastPayload):
-                var broadcast = message.GetPayload<ShiftBroadcastPayload>();
-                if (broadcast != null)
-                {
-                    await smsService.SendShiftBroadcast(broadcast, ct);
-
-                    // Also send push notification (supplementary to SMS)
-                    await SendPushForShiftBroadcast(db, pushService, broadcast, ct);
-                }
+                var broadcast = message.GetPayload<ShiftBroadcastPayload>()
+                    ?? throw new InvalidOperationException(
+                        $"Failed to deserialize {nameof(ShiftBroadcastPayload)} for message {message.Id}");
+                await smsService.SendShiftBroadcast(broadcast, ct);
+                // Also send push notification (supplementary to SMS)
+                await SendPushForShiftBroadcast(db, pushService, broadcast, ct);
                 break;
 
             case nameof(InviteSmsPayload):
-                var invite = message.GetPayload<InviteSmsPayload>();
-                if (invite != null)
-                    await smsService.SendInviteSms(invite, ct);
+                var invite = message.GetPayload<InviteSmsPayload>()
+                    ?? throw new InvalidOperationException(
+                        $"Failed to deserialize {nameof(InviteSmsPayload)} for message {message.Id}");
+                await smsService.SendInviteSms(invite, ct);
                 break;
 
             case nameof(AdminInviteSmsPayload):
-                var adminInvite = message.GetPayload<AdminInviteSmsPayload>();
-                if (adminInvite != null)
-                    await smsService.SendAdminInviteSms(adminInvite, ct);
+                var adminInvite = message.GetPayload<AdminInviteSmsPayload>()
+                    ?? throw new InvalidOperationException(
+                        $"Failed to deserialize {nameof(AdminInviteSmsPayload)} for message {message.Id}");
+                await smsService.SendAdminInviteSms(adminInvite, ct);
                 break;
 
             case nameof(ClaimConfirmationPayload):
-                var confirmation = message.GetPayload<ClaimConfirmationPayload>();
-                if (confirmation != null)
-                    await smsService.SendClaimConfirmation(confirmation, ct);
+                var confirmation = message.GetPayload<ClaimConfirmationPayload>()
+                    ?? throw new InvalidOperationException(
+                        $"Failed to deserialize {nameof(ClaimConfirmationPayload)} for message {message.Id}");
+                await smsService.SendClaimConfirmation(confirmation, ct);
                 break;
 
             case nameof(ShiftReopenedPayload):
-                var reopened = message.GetPayload<ShiftReopenedPayload>();
-                if (reopened != null)
-                    await smsService.SendShiftReopened(reopened, ct);
+                var reopened = message.GetPayload<ShiftReopenedPayload>()
+                    ?? throw new InvalidOperationException(
+                        $"Failed to deserialize {nameof(ShiftReopenedPayload)} for message {message.Id}");
+                await smsService.SendShiftReopened(reopened, ct);
                 break;
 
             default:

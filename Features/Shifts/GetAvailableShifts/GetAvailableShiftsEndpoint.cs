@@ -14,6 +14,7 @@ public static class GetAvailableShiftsEndpoint
     private static async Task<IResult> Handle(
         string phoneNumber,
         AppDbContext db,
+        TimeProvider timeProvider,
         CancellationToken ct)
     {
         var phoneResult = PhoneNumber.Parse(phoneNumber);
@@ -29,15 +30,30 @@ public static class GetAvailableShiftsEndpoint
         if (casual == null)
             return Results.NotFound(new { error = "Casual not found with this phone number" });
 
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+
+        // Get IDs of shifts this casual has already claimed
+        var claimedShiftIds = casual.Claims
+            .Where(c => c.Status == ClaimStatus.Claimed)
+            .Select(c => c.ShiftId)
+            .ToHashSet();
+
         var shifts = await db.Shifts
-            .Where(s => s.PoolId == casual.PoolId && s.Status == ShiftStatus.Open)
+            .Where(s => s.PoolId == casual.PoolId
+                && s.Status == ShiftStatus.Open
+                && s.StartsAt > now)  // Exclude past shifts
             .OrderBy(s => s.StartsAt)
             .ToListAsync(ct);
+
+        // Filter out shifts the casual already claimed (in memory since we have the IDs)
+        var availableShifts = shifts
+            .Where(s => !claimedShiftIds.Contains(s.Id))
+            .ToList();
 
         return Results.Ok(new
         {
             casual = new CasualResponse(casual),
-            availableShifts = shifts.Select(s => new ShiftResponse(s))
+            availableShifts = availableShifts.Select(s => new ShiftResponse(s))
         });
     }
 }

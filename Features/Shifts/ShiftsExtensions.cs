@@ -15,11 +15,11 @@ public static class ShiftsExtensions
 {
     public static void MapManagerShiftFeatures(this RouteGroupBuilder group)
     {
-        group.MapPostShift();
+        group.MapPostShift().RequireRateLimiting("sms-send");
         group.MapGetShifts();
         group.MapReleaseCasual();
         group.MapCancelShift();
-        group.MapResendShiftNotification();
+        group.MapResendShiftNotification().RequireRateLimiting("sms-send");
     }
 
     public static void MapCasualShiftFeatures(this RouteGroupBuilder group)
