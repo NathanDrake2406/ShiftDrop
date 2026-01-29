@@ -25,7 +25,7 @@ public static class GetAvailableShiftsEndpoint
         var casual = await db.Casuals
             .Include(c => c.Pool)
             .Include(c => c.Claims)
-            .FirstOrDefaultAsync(c => c.PhoneNumber == parsedPhone, ct);
+            .FirstOrDefaultAsync(c => c.PhoneNumber == parsedPhone && c.RemovedAt == null, ct);
 
         if (casual == null)
             return Results.NotFound(new { error = "Casual not found with this phone number" });

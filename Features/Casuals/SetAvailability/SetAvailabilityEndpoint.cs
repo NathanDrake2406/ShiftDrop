@@ -27,7 +27,7 @@ public static class SetAvailabilityEndpoint
         if (pool == null)
             return Results.NotFound();
 
-        var casual = pool.Casuals.FirstOrDefault(c => c.Id == casualId);
+        var casual = pool.Casuals.FirstOrDefault(c => c.Id == casualId && !c.IsRemoved);
         if (casual == null)
             return Results.NotFound(new { error = "Casual not found" });
 

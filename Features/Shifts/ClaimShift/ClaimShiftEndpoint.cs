@@ -26,7 +26,7 @@ public static class ClaimShiftEndpoint
         var phoneNumber = phoneResult.Value;
         var casual = await db.Casuals
             .Include(c => c.Claims)
-            .FirstOrDefaultAsync(c => c.PhoneNumber == phoneNumber, ct);
+            .FirstOrDefaultAsync(c => c.PhoneNumber == phoneNumber && c.RemovedAt == null, ct);
 
         if (casual == null)
             return Results.NotFound(new { error = "Casual not found with this phone number" });

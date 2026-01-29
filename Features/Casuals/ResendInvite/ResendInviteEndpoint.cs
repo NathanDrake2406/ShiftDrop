@@ -32,7 +32,7 @@ public static class ResendInviteEndpoint
 
         var casual = await db.Casuals
             .Include(c => c.Pool)
-            .FirstOrDefaultAsync(c => c.Id == casualId && c.PoolId == poolId, ct);
+            .FirstOrDefaultAsync(c => c.Id == casualId && c.PoolId == poolId && c.RemovedAt == null, ct);
 
         if (casual == null)
             return Results.NotFound();

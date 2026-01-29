@@ -15,6 +15,7 @@ public static class RemoveCasualEndpoint
         Guid casualId,
         AppDbContext db,
         ClaimsPrincipal user,
+        TimeProvider timeProvider,
         CancellationToken ct)
     {
         var managerId = user.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -25,11 +26,12 @@ public static class RemoveCasualEndpoint
         if (pool == null)
             return Results.NotFound();
 
-        var casual = pool.Casuals.FirstOrDefault(c => c.Id == casualId);
+        // Filter out already-removed casuals
+        var casual = pool.Casuals.FirstOrDefault(c => c.Id == casualId && !c.IsRemoved);
         if (casual == null)
             return Results.NotFound();
 
-        pool.RemoveCasual(casual);
+        pool.RemoveCasual(casual, timeProvider);
         await db.SaveChangesAsync(ct);
 
         return Results.NoContent();

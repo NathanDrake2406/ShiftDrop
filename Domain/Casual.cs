@@ -19,11 +19,20 @@ public class Casual
     public DateTime? OptedOutAt { get; private set; }
     public string? OptOutToken { get; private set; }
 
+    // Soft-delete field - set when manager removes casual from pool
+    public DateTime? RemovedAt { get; private set; }
+
     /// <summary>
-    /// A casual is active if they've accepted their invite and haven't opted out.
+    /// True if the casual has been soft-deleted (removed by manager).
+    /// Removed casuals are excluded from pool lists but their claim history is preserved.
+    /// </summary>
+    public bool IsRemoved => RemovedAt != null;
+
+    /// <summary>
+    /// A casual is active if they've accepted their invite, haven't opted out, and haven't been removed.
     /// Only active casuals receive shift notifications.
     /// </summary>
-    public bool IsActive => InviteStatus == InviteStatus.Accepted && OptedOutAt == null;
+    public bool IsActive => InviteStatus == InviteStatus.Accepted && OptedOutAt == null && RemovedAt == null;
 
     private readonly List<ShiftClaim> _claims = new();
     public IReadOnlyCollection<ShiftClaim> Claims => _claims.AsReadOnly();
@@ -202,6 +211,15 @@ public class Casual
     {
         _availability.Clear();
         _availability.AddRange(availability);
+    }
+
+    /// <summary>
+    /// Soft-deletes the casual. They will be excluded from pool lists
+    /// but their claim history is preserved for audit purposes.
+    /// </summary>
+    public void MarkAsRemoved(TimeProvider timeProvider)
+    {
+        RemovedAt = timeProvider.GetUtcNow().UtcDateTime;
     }
 }
 

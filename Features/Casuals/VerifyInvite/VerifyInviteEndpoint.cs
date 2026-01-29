@@ -17,7 +17,7 @@ public static class VerifyInviteEndpoint
     {
         var casual = await db.Casuals
             .Include(c => c.Pool)
-            .FirstOrDefaultAsync(c => c.InviteToken == request.Token, ct);
+            .FirstOrDefaultAsync(c => c.InviteToken == request.Token && c.RemovedAt == null, ct);
 
         if (casual == null)
             return Results.NotFound(new { error = "Invalid or expired invite token" });

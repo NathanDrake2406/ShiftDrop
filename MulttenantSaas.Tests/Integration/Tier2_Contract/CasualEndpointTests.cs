@@ -86,10 +86,105 @@ public class CasualEndpointTests : IntegrationTestBase
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        // Verify casual was actually deleted
-        var exists = await QueryDbAsync(async db =>
-            await db.Casuals.AnyAsync(c => c.Id == scenario.FirstCasual.Id));
-        exists.Should().BeFalse();
+        // Verify casual was soft-deleted (still exists but has RemovedAt set)
+        var casual = await QueryDbAsync(async db =>
+            await db.Casuals.FirstOrDefaultAsync(c => c.Id == scenario.FirstCasual.Id));
+        casual.Should().NotBeNull();
+        casual!.RemovedAt.Should().NotBeNull("casual should be soft-deleted");
+        casual.IsRemoved.Should().BeTrue("IsRemoved should return true after removal");
+    }
+
+    [Fact]
+    public async Task RemoveCasual_WhenHasExistingClaims_SucceedsWithSoftDelete()
+    {
+        // Arrange: Create a casual with a claimed shift (the original bug scenario)
+        var scenario = await SeedScenarioAsync(ManagerId, casualCount: 1, shiftCount: 1);
+        var client = CreateAuthenticatedClient(ManagerId);
+
+        // Claim the shift first
+        await Client.PostAsJsonAsync(
+            $"/casual/shifts/{scenario.FirstShift.Id}/claim",
+            new ClaimShiftRequest(scenario.FirstCasual.PhoneNumber));
+
+        // Verify the claim exists
+        var claimExists = await QueryDbAsync(async db =>
+            await db.ShiftClaims.AnyAsync(c => c.CasualId == scenario.FirstCasual.Id));
+        claimExists.Should().BeTrue("precondition: casual should have a claim");
+
+        // Act: Remove the casual (this used to fail with FK violation)
+        var response = await client.DeleteAsync(
+            $"/pools/{scenario.Pool.Id}/casuals/{scenario.FirstCasual.Id}");
+
+        // Assert: Should succeed with soft-delete
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Verify casual is soft-deleted
+        var casual = await QueryDbAsync(async db =>
+            await db.Casuals.FirstOrDefaultAsync(c => c.Id == scenario.FirstCasual.Id));
+        casual.Should().NotBeNull();
+        casual!.IsRemoved.Should().BeTrue();
+
+        // Verify claim history is preserved
+        var claimStillExists = await QueryDbAsync(async db =>
+            await db.ShiftClaims.AnyAsync(c => c.CasualId == scenario.FirstCasual.Id));
+        claimStillExists.Should().BeTrue("claim history should be preserved after soft-delete");
+    }
+
+    [Fact]
+    public async Task RemoveCasual_WhenAlreadyRemoved_Returns404()
+    {
+        // Arrange
+        var scenario = await SeedScenarioAsync(ManagerId, casualCount: 1);
+        var client = CreateAuthenticatedClient(ManagerId);
+
+        // Remove the casual first
+        await client.DeleteAsync($"/pools/{scenario.Pool.Id}/casuals/{scenario.FirstCasual.Id}");
+
+        // Act: Try to remove again
+        var response = await client.DeleteAsync(
+            $"/pools/{scenario.Pool.Id}/casuals/{scenario.FirstCasual.Id}");
+
+        // Assert: Should return 404 since casual is already removed
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task RemovedCasual_DoesNotAppearInPoolDetails()
+    {
+        // Arrange
+        var scenario = await SeedScenarioAsync(ManagerId, casualCount: 2);
+        var client = CreateAuthenticatedClient(ManagerId);
+
+        // Remove the first casual
+        await client.DeleteAsync($"/pools/{scenario.Pool.Id}/casuals/{scenario.Casuals[0].Id}");
+
+        // Act: Get pool details
+        var response = await client.GetAsync($"/pools/{scenario.Pool.Id}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var pool = await response.Content.ReadFromJsonAsync<PoolDetailResponse>();
+        pool!.Casuals.Should().HaveCount(1, "removed casual should not appear in pool details");
+        pool.Casuals.First().Id.Should().Be(scenario.Casuals[1].Id, "only non-removed casual should appear");
+    }
+
+    [Fact]
+    public async Task RemovedCasual_CannotClaimNewShifts()
+    {
+        // Arrange
+        var scenario = await SeedScenarioAsync(ManagerId, casualCount: 1, shiftCount: 1);
+        var client = CreateAuthenticatedClient(ManagerId);
+
+        // Remove the casual
+        await client.DeleteAsync($"/pools/{scenario.Pool.Id}/casuals/{scenario.FirstCasual.Id}");
+
+        // Act: Try to claim a shift
+        var response = await Client.PostAsJsonAsync(
+            $"/casual/shifts/{scenario.FirstShift.Id}/claim",
+            new ClaimShiftRequest(scenario.FirstCasual.PhoneNumber));
+
+        // Assert: Should return 404 (casual not found)
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -314,5 +409,6 @@ public class CasualEndpointTests : IntegrationTestBase
         int SpotsRemaining,
         string Status);
     private record AvailableShiftsResponse(CasualResponse Casual, ShiftResponse[] AvailableShifts);
+    private record PoolDetailResponse(Guid Id, string Name, DateTime CreatedAt, List<CasualResponse> Casuals);
     private record ErrorResponse(string Error);
 }

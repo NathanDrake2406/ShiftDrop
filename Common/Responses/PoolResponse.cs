@@ -9,5 +9,6 @@ public record PoolResponse(Guid Id, string Name, DateTime CreatedAt)
 
 public record PoolDetailResponse(Guid Id, string Name, DateTime CreatedAt, List<CasualResponse> Casuals)
 {
-    public PoolDetailResponse(Pool p) : this(p.Id, p.Name, p.CreatedAt, p.Casuals.Select(c => new CasualResponse(c)).ToList()) { }
+    public PoolDetailResponse(Pool p) : this(p.Id, p.Name, p.CreatedAt,
+        p.Casuals.Where(c => !c.IsRemoved).Select(c => new CasualResponse(c)).ToList()) { }
 }

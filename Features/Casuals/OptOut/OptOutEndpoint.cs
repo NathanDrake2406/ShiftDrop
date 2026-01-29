@@ -16,7 +16,7 @@ public static class OptOutEndpoint
         CancellationToken ct)
     {
         var casual = await db.Casuals
-            .FirstOrDefaultAsync(c => c.OptOutToken == request.Token, ct);
+            .FirstOrDefaultAsync(c => c.OptOutToken == request.Token && c.RemovedAt == null, ct);
 
         if (casual == null)
             return Results.NotFound(new { error = "Invalid opt-out token" });

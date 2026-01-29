@@ -38,7 +38,8 @@ public static class GetPoolStatsEndpoint
     private static PoolStatsResponse CalculateStats(Pool pool)
     {
         var shifts = pool.Shifts.ToList();
-        var casuals = pool.Casuals.ToList();
+        // Exclude soft-deleted casuals from stats
+        var casuals = pool.Casuals.Where(c => !c.IsRemoved).ToList();
 
         var totalShiftsPosted = shifts.Count;
         var shiftsFilled = shifts.Count(s => s.Status == ShiftStatus.Filled);

@@ -57,9 +57,12 @@ public class Pool
         return shiftResult;
     }
 
-    public void RemoveCasual(Casual casual)
+    /// <summary>
+    /// Soft-deletes a casual from the pool. Their claim history is preserved.
+    /// </summary>
+    public void RemoveCasual(Casual casual, TimeProvider timeProvider)
     {
-        _casuals.Remove(casual);
+        casual.MarkAsRemoved(timeProvider);
     }
 
     /// <summary>
