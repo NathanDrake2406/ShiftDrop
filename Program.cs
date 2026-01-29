@@ -167,8 +167,14 @@ builder
 
 builder.Services.AddAuthorization();
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sqlOptions => sqlOptions.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null))
 );
+
+builder.Services.Configure<DbKeepAliveOptions>(
+    builder.Configuration.GetSection("DbKeepAlive"));
+builder.Services.AddHostedService<DbKeepAliveService>();
 
 // Health checks with DB connectivity
 builder.Services.AddHealthChecks()
