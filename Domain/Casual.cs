@@ -216,10 +216,11 @@ public class Casual
     /// <summary>
     /// Soft-deletes the casual. They will be excluded from pool lists
     /// but their claim history is preserved for audit purposes.
+    /// Idempotent — calling multiple times preserves the original removal timestamp.
     /// </summary>
     public void MarkAsRemoved(TimeProvider timeProvider)
     {
-        RemovedAt = timeProvider.GetUtcNow().UtcDateTime;
+        RemovedAt ??= timeProvider.GetUtcNow().UtcDateTime;
     }
 }
 
