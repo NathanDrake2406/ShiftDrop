@@ -4,12 +4,13 @@ import { Layout } from "../components/ui/Layout";
 import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
-import { TimeInput } from "../components/ui/TimeInput";
 import { ShiftCard } from "../components/ShiftCard";
 import { ShiftCardSkeleton } from "../components/ui/Skeleton";
 import { TeamTab } from "../components/TeamTab";
 import { AvailabilityEditor } from "../components/AvailabilityEditor";
 import { CasualRow } from "../components/CasualRow";
+import { CreateShiftModal } from "../components/pool/CreateShiftModal";
+import { AddCasualModal } from "../components/pool/AddCasualModal";
 import { Plus, BarChart3, Users, CheckCircle, Clock } from "lucide-react";
 import { StatsCard } from "../components/ui/StatsCard";
 import { useToast } from "../contexts/ToastContext";
@@ -69,8 +70,6 @@ export const PoolDetails: React.FC = () => {
   const [selectedCasual, setSelectedCasual] = useState<CasualResponse | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isAddingCasual, setIsAddingCasual] = useState(false);
-  const [casualForm, setCasualForm] = useState({ name: "", phone: "" });
-  const [casualErrors, setCasualErrors] = useState<{ name?: string; phone?: string }>({});
   const [confirmAction, setConfirmAction] = useState<null | {
     type: "cancelShift" | "removeCasual" | "releaseCasual" | "resendInvite" | "resendShiftNotification";
     shiftId?: string;
@@ -84,88 +83,6 @@ export const PoolDetails: React.FC = () => {
     selectedCasual?.id,
   );
   const setAvailabilityMutation = useSetCasualAvailability(id ?? "", selectedCasual?.id ?? "");
-
-  // Create Shift State
-  const toDateInput = (date: Date) => {
-    const pad = (n: number) => n.toString().padStart(2, "0");
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-  };
-
-  const toTimeInput = (date: Date) => {
-    const pad = (n: number) => n.toString().padStart(2, "0");
-    return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-  };
-
-  const parseDateTimeInput = (dateValue: string, timeValue: string) => {
-    const dateParts = dateValue.split("-").map(Number);
-    const timeParts = timeValue.split(":").map(Number);
-
-    const yearValue = dateParts[0];
-    const monthValue = dateParts[1];
-    const dayValue = dateParts[2];
-    const hoursValue = timeParts[0];
-    const minutesValue = timeParts[1];
-
-    if (
-      yearValue === undefined ||
-      monthValue === undefined ||
-      dayValue === undefined ||
-      hoursValue === undefined ||
-      minutesValue === undefined
-    ) {
-      return null;
-    }
-
-    if (
-      Number.isNaN(yearValue) ||
-      Number.isNaN(monthValue) ||
-      Number.isNaN(dayValue) ||
-      Number.isNaN(hoursValue) ||
-      Number.isNaN(minutesValue)
-    ) {
-      return null;
-    }
-
-    if (monthValue < 1 || monthValue > 12 || dayValue < 1 || dayValue > 31) {
-      return null;
-    }
-
-    if (hoursValue < 0 || hoursValue > 23 || minutesValue < 0 || minutesValue > 59) {
-      return null;
-    }
-
-    const parsed = new Date(yearValue, monthValue - 1, dayValue, hoursValue, minutesValue, 0, 0);
-    if (
-      parsed.getFullYear() !== yearValue ||
-      parsed.getMonth() !== monthValue - 1 ||
-      parsed.getDate() !== dayValue ||
-      parsed.getHours() !== hoursValue ||
-      parsed.getMinutes() !== minutesValue
-    ) {
-      return null;
-    }
-
-    return parsed;
-  };
-
-  const buildDefaultShiftForm = () => {
-    const start = new Date();
-    start.setSeconds(0, 0);
-    start.setMinutes(0);
-    start.setHours(start.getHours() + 1);
-    const end = new Date(start);
-    end.setHours(start.getHours() + 4);
-
-    return {
-      startDate: toDateInput(start),
-      startTime: toTimeInput(start),
-      endDate: toDateInput(end),
-      endTime: toTimeInput(end),
-      spotsNeeded: 1,
-    };
-  };
-
-  const [shiftForm, setShiftForm] = useState(buildDefaultShiftForm());
 
   // Admin handlers
   const handleInviteAdmin = async (phoneNumber: string, name: string) => {
@@ -215,111 +132,8 @@ export const PoolDetails: React.FC = () => {
     }
   };
 
-  const handlePostShift = async () => {
-    if (!id) return;
-
-    if (!shiftForm.startDate || !shiftForm.startTime || !shiftForm.endDate || !shiftForm.endTime) {
-      showToast("Please select start and end dates and times.", "error");
-      return;
-    }
-
-    const startDate = parseDateTimeInput(shiftForm.startDate, shiftForm.startTime);
-    const endDate = parseDateTimeInput(shiftForm.endDate, shiftForm.endTime);
-    if (!startDate || !endDate) {
-      showToast("Invalid dates. Please choose valid start and end times.", "error");
-      return;
-    }
-
-    const durationHours = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
-    if (durationHours <= 0) {
-      showToast("End time must be after the start time.", "error");
-      return;
-    }
-    if (durationHours > 15) {
-      showToast("Shift duration cannot exceed 15 hours.", "error");
-      return;
-    }
-    if (
-      !Number.isFinite(shiftForm.spotsNeeded) ||
-      !Number.isInteger(shiftForm.spotsNeeded) ||
-      shiftForm.spotsNeeded <= 0
-    ) {
-      showToast("Spots needed must be at least 1.", "error");
-      return;
-    }
-
-    try {
-      await postShiftMutation.mutateAsync({
-        startsAt: startDate.toISOString(),
-        endsAt: endDate.toISOString(),
-        spotsNeeded: shiftForm.spotsNeeded,
-      });
-      setIsCreating(false);
-      setShiftForm(buildDefaultShiftForm());
-      showToast("Shift posted successfully!", "success");
-    } catch (err) {
-      if (err instanceof ApiError) {
-        showToast(err.message, "error");
-      } else {
-        showToast("Failed to post shift", "error");
-      }
-    }
-  };
-
   const handleCancelShift = (shiftId: string) => {
     setConfirmAction({ type: "cancelShift", shiftId });
-  };
-
-  const validateCasualForm = (nameInput: string, phoneInput: string) => {
-    const errors: { name?: string; phone?: string } = {};
-    const name = nameInput.trim();
-    if (name.length < 2 || name.length > 50 || !/[A-Za-z]/.test(name)) {
-      errors.name = "Name must be 2-50 characters and include a letter.";
-    }
-
-    const phone = phoneInput.trim();
-    const digitsOnly = phone.replace(/\D/g, "");
-    if (!phone) {
-      errors.phone = "Phone number is required.";
-    } else if (!/^[0-9+()\s-]+$/.test(phone) || digitsOnly.length < 7 || digitsOnly.length > 15) {
-      errors.phone = "Enter a valid phone number.";
-    }
-
-    return { errors, name, phone };
-  };
-
-  const openAddCasual = () => {
-    setCasualForm({ name: "", phone: "" });
-    setCasualErrors({});
-    setIsAddingCasual(true);
-  };
-
-  const closeAddCasual = () => {
-    setIsAddingCasual(false);
-    setCasualErrors({});
-    setCasualForm({ name: "", phone: "" });
-  };
-
-  const handleAddCasual = async () => {
-    if (!id) return;
-
-    const { errors, name, phone } = validateCasualForm(casualForm.name, casualForm.phone);
-    setCasualErrors(errors);
-    if (errors.name || errors.phone) {
-      return;
-    }
-
-    try {
-      await addCasualMutation.mutateAsync({ name, phoneNumber: phone });
-      closeAddCasual();
-      showToast(`${name} added to pool`, "success");
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setCasualErrors({ phone: err.message });
-      } else {
-        setCasualErrors({ phone: "Failed to add casual" });
-      }
-    }
   };
 
   const handleRemoveCasual = (casualId: string) => {
@@ -534,7 +348,7 @@ export const PoolDetails: React.FC = () => {
 
       {activeTab === "casuals" && (
         <div className="space-y-3">
-          <Button variant="secondary" onClick={openAddCasual} className="w-full">
+          <Button variant="secondary" onClick={() => setIsAddingCasual(true)} className="w-full">
             <Plus className="w-4 h-4 mr-2" /> Add Casual
           </Button>
 
@@ -585,10 +399,7 @@ export const PoolDetails: React.FC = () => {
         <div className="fixed bottom-6 left-0 right-0 px-4 flex justify-center z-20">
           <Button
             className="shadow-xl rounded-full px-8 py-4 bg-orange-500 hover:bg-orange-600 text-white flex items-center gap-2"
-            onClick={() => {
-              setShiftForm(buildDefaultShiftForm());
-              setIsCreating(true);
-            }}
+            onClick={() => setIsCreating(true)}
           >
             <Plus className="w-5 h-5" /> Post Shift
           </Button>
@@ -596,129 +407,22 @@ export const PoolDetails: React.FC = () => {
       )}
 
       {/* Create Shift Modal */}
-      <Modal isOpen={isCreating} onClose={() => setIsCreating(false)} title="New Shift" noAutoFocus>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Start</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Date</label>
-                <div className="ui-input-shell">
-                  <input
-                    type="date"
-                    className="ui-input-field"
-                    value={shiftForm.startDate}
-                    min={new Date().toISOString().split("T")[0]}
-                    onChange={(e) => setShiftForm({ ...shiftForm, startDate: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Time</label>
-                <TimeInput
-                  value={shiftForm.startTime}
-                  onChange={(value) => setShiftForm({ ...shiftForm, startTime: value })}
-                />
-              </div>
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">End</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Date</label>
-                <div className="ui-input-shell">
-                  <input
-                    type="date"
-                    className="ui-input-field"
-                    value={shiftForm.endDate}
-                    min={shiftForm.startDate || new Date().toISOString().split("T")[0]}
-                    onChange={(e) => setShiftForm({ ...shiftForm, endDate: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Time</label>
-                <TimeInput
-                  value={shiftForm.endTime}
-                  onChange={(value) => setShiftForm({ ...shiftForm, endTime: value })}
-                />
-              </div>
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Spots Needed</label>
-            <div className="ui-input-shell">
-              <input
-                type="number"
-                min="1"
-                step="1"
-                className="ui-input-field"
-                value={Number.isFinite(shiftForm.spotsNeeded) ? shiftForm.spotsNeeded : ""}
-                onChange={(e) => {
-                  const rawValue = e.target.value;
-                  const parsed = rawValue === "" ? Number.NaN : Number(rawValue);
-                  setShiftForm({ ...shiftForm, spotsNeeded: parsed });
-                }}
-              />
-            </div>
-          </div>
-          <Button className="w-full mt-2" onClick={handlePostShift} isLoading={postShiftMutation.isPending}>
-            Post Shift
-          </Button>
-        </div>
-      </Modal>
+      <CreateShiftModal
+        isOpen={isCreating}
+        onClose={() => setIsCreating(false)}
+        onSuccess={() => showToast("Shift posted", "success")}
+        postShift={(data) => postShiftMutation.mutateAsync(data).then(() => {})}
+        isLoading={postShiftMutation.isPending}
+      />
 
       {/* Add Casual Modal */}
-      <Modal isOpen={isAddingCasual} onClose={closeAddCasual} title="Add Casual">
-        <form
-          className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleAddCasual();
-          }}
-        >
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Casual Name</label>
-            <input
-              type="text"
-              className={`ui-input ${casualErrors.name ? "ui-input-error" : ""}`}
-              value={casualForm.name}
-              onChange={(e) => {
-                setCasualForm({ ...casualForm, name: e.target.value });
-                if (casualErrors.name) {
-                  setCasualErrors((prev) => ({ ...prev, name: undefined }));
-                }
-              }}
-              autoFocus
-            />
-            {casualErrors.name && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{casualErrors.name}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Phone Number</label>
-            <input
-              type="tel"
-              className={`ui-input ${casualErrors.phone ? "ui-input-error" : ""}`}
-              value={casualForm.phone}
-              onChange={(e) => {
-                setCasualForm({ ...casualForm, phone: e.target.value });
-                if (casualErrors.phone) {
-                  setCasualErrors((prev) => ({ ...prev, phone: undefined }));
-                }
-              }}
-            />
-            {casualErrors.phone && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{casualErrors.phone}</p>}
-          </div>
-          <div className="flex gap-3">
-            <Button type="button" variant="secondary" className="flex-1" onClick={closeAddCasual}>
-              Cancel
-            </Button>
-            <Button type="submit" className="flex-1" isLoading={addCasualMutation.isPending}>
-              Add Casual
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      <AddCasualModal
+        isOpen={isAddingCasual}
+        onClose={() => setIsAddingCasual(false)}
+        onSuccess={(name) => showToast(`${name} added to pool`, "success")}
+        addCasual={(data) => addCasualMutation.mutateAsync(data).then(() => {})}
+        isLoading={addCasualMutation.isPending}
+      />
 
       {/* Confirm Action Modal */}
       <ConfirmDialog
