@@ -138,3 +138,5 @@ export const VerifyInvitePage: React.FC = () => {
     </Layout>
   );
 };
+
+export default VerifyInvitePage;

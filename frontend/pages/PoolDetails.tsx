@@ -9,7 +9,8 @@ import { ShiftCard } from "../components/ShiftCard";
 import { ShiftCardSkeleton } from "../components/ui/Skeleton";
 import { TeamTab } from "../components/TeamTab";
 import { AvailabilityEditor } from "../components/AvailabilityEditor";
-import { Plus, Trash2, RefreshCw, Calendar, BarChart3, Users, CheckCircle, Clock } from "lucide-react";
+import { CasualRow } from "../components/CasualRow";
+import { Plus, BarChart3, Users, CheckCircle, Clock } from "lucide-react";
 import { StatsCard } from "../components/ui/StatsCard";
 import { useToast } from "../contexts/ToastContext";
 import { useDemo } from "../contexts/DemoContext";
@@ -30,6 +31,8 @@ import {
   useRemoveAdmin,
   useSetCasualAvailability,
 } from "../hooks/useManagerQueries";
+import { useCasualFilters } from "../hooks/useCasualFilters";
+import { useCasualCallbacks } from "../hooks/useCasualCallbacks";
 import type { CasualResponse } from "../types/api";
 import { ApiError } from "../types/api";
 
@@ -455,8 +458,14 @@ export const PoolDetails: React.FC = () => {
       </Layout>
     );
 
-  const activeCasuals = pool.casuals.filter((c) => c.isActive);
-  const pendingCasuals = pool.casuals.filter((c) => !c.isActive);
+  const { activeCasuals, pendingCasuals } = useCasualFilters(pool.casuals);
+
+  // Stable callback references for CasualRow components (prevents re-renders)
+  const casualCallbacks = useCasualCallbacks({
+    onRemove: handleRemoveCasual,
+    onResendInvite: handleResendInvite,
+    onEditAvailability: handleOpenAvailability,
+  });
 
   return (
     <Layout title={pool.name} showBack onBack={() => navigate("/manager")}>
@@ -536,9 +545,7 @@ export const PoolDetails: React.FC = () => {
                 <CasualRow
                   key={casual.id}
                   casual={casual}
-                  onRemove={() => handleRemoveCasual(casual.id)}
-                  onResendInvite={() => handleResendInvite(casual)}
-                  onEditAvailability={() => handleOpenAvailability(casual)}
+                  {...casualCallbacks.getCallbacks(casual)}
                 />
               ))}
             </div>
@@ -551,9 +558,7 @@ export const PoolDetails: React.FC = () => {
                 <CasualRow
                   key={casual.id}
                   casual={casual}
-                  onRemove={() => handleRemoveCasual(casual.id)}
-                  onResendInvite={() => handleResendInvite(casual)}
-                  onEditAvailability={() => handleOpenAvailability(casual)}
+                  {...casualCallbacks.getCallbacks(casual)}
                 />
               ))}
             </div>
@@ -743,62 +748,4 @@ export const PoolDetails: React.FC = () => {
   );
 };
 
-// Extracted CasualRow component for cleaner code
-interface CasualRowProps {
-  casual: CasualResponse;
-  onRemove: () => void;
-  onResendInvite: () => void;
-  onEditAvailability: () => void;
-}
-
-function CasualRow({ casual, onRemove, onResendInvite, onEditAvailability }: CasualRowProps) {
-  const statusBadge = casual.isOptedOut ? (
-    <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-      Opted Out
-    </span>
-  ) : casual.isActive ? (
-    <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-      Active
-    </span>
-  ) : (
-    <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400">
-      Pending
-    </span>
-  );
-
-  const canResend = !casual.isOptedOut && casual.inviteStatus === "Pending";
-
-  return (
-    <div className="ui-surface p-4 rounded-xl flex justify-between items-center mb-2">
-      <div>
-        <div className="font-medium text-slate-900 dark:text-slate-100">{casual.name}</div>
-        <div className="text-sm text-slate-500 dark:text-slate-400">{casual.phoneNumber}</div>
-      </div>
-      <div className="flex items-center gap-2">
-        {statusBadge}
-        <button
-          onClick={onEditAvailability}
-          className="p-2 text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
-          title="Edit availability"
-        >
-          <Calendar className="w-4 h-4" />
-        </button>
-        {canResend && (
-          <button
-            onClick={onResendInvite}
-            className="p-2 text-slate-400 hover:text-orange-500 dark:hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
-            title="Resend invite"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        )}
-        <button
-          onClick={onRemove}
-          className="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
-      </div>
-    </div>
-  );
-}
+export default PoolDetails;

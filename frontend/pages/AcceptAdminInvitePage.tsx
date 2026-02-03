@@ -116,3 +116,5 @@ export const AcceptAdminInvitePage: React.FC = () => {
     </Layout>
   );
 };
+
+export default AcceptAdminInvitePage;

@@ -103,3 +103,5 @@ export const OptOutPage: React.FC = () => {
     </Layout>
   );
 };
+
+export default OptOutPage;

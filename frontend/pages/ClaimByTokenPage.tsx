@@ -150,3 +150,5 @@ export const ClaimByTokenPage: React.FC = () => {
     </Layout>
   );
 };
+
+export default ClaimByTokenPage;
