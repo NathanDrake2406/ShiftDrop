@@ -2,9 +2,9 @@ name: CI/CD
 
 on:
   push:
-    branches: [main, integration/frontend-backend]
+    branches: [main]
   pull_request:
-    branches: [main, integration/frontend-backend]
+    branches: [main]
 
 env:
   DOTNET_VERSION: '8.0.x'
@@ -62,7 +62,7 @@ jobs:
     name: Deploy to Azure
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/integration/frontend-backend')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
       - uses: actions/checkout@v4
