@@ -84,6 +84,29 @@ export const PoolDetails: React.FC = () => {
   );
   const setAvailabilityMutation = useSetCasualAvailability(id ?? "", selectedCasual?.id ?? "");
 
+  // Casual filtering - must be called unconditionally (Rules of Hooks)
+  const { activeCasuals, pendingCasuals } = useCasualFilters(pool?.casuals ?? []);
+
+  // Handlers needed by useCasualCallbacks (must be defined before the hook)
+  const handleOpenAvailability = (casual: CasualResponse) => {
+    setSelectedCasual(casual);
+  };
+
+  const handleRemoveCasual = (casualId: string) => {
+    setConfirmAction({ type: "removeCasual", casualId });
+  };
+
+  const handleResendInvite = (casual: CasualResponse) => {
+    setConfirmAction({ type: "resendInvite", casualId: casual.id, casualName: casual.name });
+  };
+
+  // Stable callback references for CasualRow components (prevents re-renders)
+  const casualCallbacks = useCasualCallbacks({
+    onRemove: handleRemoveCasual,
+    onResendInvite: handleResendInvite,
+    onEditAvailability: handleOpenAvailability,
+  });
+
   // Admin handlers
   const handleInviteAdmin = async (phoneNumber: string, name: string) => {
     if (!id) return;
@@ -113,11 +136,6 @@ export const PoolDetails: React.FC = () => {
     }
   };
 
-  // Availability handlers
-  const handleOpenAvailability = (casual: CasualResponse) => {
-    setSelectedCasual(casual);
-  };
-
   const handleSaveAvailability = async (availability: typeof casualAvailability) => {
     try {
       await setAvailabilityMutation.mutateAsync(availability);
@@ -136,16 +154,8 @@ export const PoolDetails: React.FC = () => {
     setConfirmAction({ type: "cancelShift", shiftId });
   };
 
-  const handleRemoveCasual = (casualId: string) => {
-    setConfirmAction({ type: "removeCasual", casualId });
-  };
-
   const handleReleaseCasual = (shiftId: string, casualId: string) => {
     setConfirmAction({ type: "releaseCasual", shiftId, casualId });
-  };
-
-  const handleResendInvite = (casual: CasualResponse) => {
-    setConfirmAction({ type: "resendInvite", casualId: casual.id, casualName: casual.name });
   };
 
   const handleResendShiftNotification = (shiftId: string) => {
@@ -271,15 +281,6 @@ export const PoolDetails: React.FC = () => {
         <div className="p-4 text-center dark:text-slate-400">Pool not found</div>
       </Layout>
     );
-
-  const { activeCasuals, pendingCasuals } = useCasualFilters(pool.casuals);
-
-  // Stable callback references for CasualRow components (prevents re-renders)
-  const casualCallbacks = useCasualCallbacks({
-    onRemove: handleRemoveCasual,
-    onResendInvite: handleResendInvite,
-    onEditAvailability: handleOpenAvailability,
-  });
 
   return (
     <Layout title={pool.name} showBack onBack={() => navigate("/manager")}>

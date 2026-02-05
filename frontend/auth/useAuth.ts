@@ -8,6 +8,10 @@ import { useAuth0Available } from "./Auth0Provider";
  * Falls back gracefully when Auth0 is unavailable (non-secure origin).
  */
 export function useAuth() {
+  const e2eBypass =
+    import.meta.env.VITE_E2E_AUTH_BYPASS === "true" &&
+    typeof window !== "undefined" &&
+    window.localStorage.getItem("shiftdrop:e2e-auth-bypass") === "true";
   const auth0Available = useAuth0Available();
   const auth0 = useAuth0();
   const { demoMode, demoManagerSignedIn, setDemoManagerSignedIn } = useDemo();
@@ -20,6 +24,7 @@ export function useAuth() {
   const auth0Logout = auth0Available ? auth0.logout : () => {};
   const getAccessTokenSilently = auth0Available ? auth0.getAccessTokenSilently : async () => "";
 
+  // All hooks must be called unconditionally (Rules of Hooks)
   const logout = useCallback(() => {
     if (demoMode) {
       setDemoManagerSignedIn(false);
@@ -45,6 +50,18 @@ export function useAuth() {
       return null;
     }
   }, [demoMode, getAccessTokenSilently, loginWithRedirect]);
+
+  // E2E bypass: return mock auth state after all hooks are called
+  if (e2eBypass) {
+    return {
+      isAuthenticated: true,
+      isLoading: false,
+      user: { name: "E2E Admin" },
+      login: async () => {},
+      logout: () => {},
+      getAccessToken: async () => "e2e-token",
+    };
+  }
 
   return {
     isAuthenticated: demoMode ? demoManagerSignedIn : isAuthenticated,

@@ -155,8 +155,9 @@ export function TeamTab({ ownerLabel, admins, onInviteAdmin, onRemoveAdmin, isLo
           }}
         >
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Admin Name</label>
+            <label htmlFor="admin-name" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Admin Name</label>
             <input
+              id="admin-name"
               type="text"
               className={`ui-input ${errors.name ? "ui-input-error" : ""}`}
               value={form.name}
@@ -171,8 +172,9 @@ export function TeamTab({ ownerLabel, admins, onInviteAdmin, onRemoveAdmin, isLo
             {errors.name && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.name}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Phone Number</label>
+            <label htmlFor="admin-phone" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Phone Number</label>
             <input
+              id="admin-phone"
               type="tel"
               className={`ui-input ${errors.phone ? "ui-input-error" : ""}`}
               value={form.phone}
